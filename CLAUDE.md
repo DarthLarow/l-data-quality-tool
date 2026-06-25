@@ -7,7 +7,8 @@
 > **Синоніми:** скрапер, app, джерело даних — все це посилання на застосунок,
 > з якого скрапер збирає дані.
 
-Детальний design spec: `docs/superpowers/specs/2026-06-25-data-quality-tool-design.md`
+Детальний design spec: `docs/superpowers/specs/2026-06-25-data-quality-tool-design.md`  
+Implementation plan: `docs/superpowers/plans/2026-06-25-data-quality-tool.md`
 
 ---
 
