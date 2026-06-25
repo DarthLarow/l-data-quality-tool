@@ -5,7 +5,8 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
+    // Server-side tests use 'node'; React component tests override with @vitest-environment jsdom
+    environment: 'node',
     globals: true,
   },
   resolve: {
