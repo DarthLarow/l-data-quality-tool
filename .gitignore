@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Build
+dist/
+
+# Prisma
+prisma/generated/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# External docs (not for version control)
+externalSystemDocs/
