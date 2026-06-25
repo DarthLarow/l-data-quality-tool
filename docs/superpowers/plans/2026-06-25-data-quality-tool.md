@@ -167,6 +167,8 @@ AI_MODEL="minimax/MiniMax-M3"
 
 - [ ] **Крок 6: Створити `.env.local`** з реальними значеннями (не комітити).
 
+  > ⏳ **Заповнити пізніше:** `SCRAPERS_DATABASE_URL` — перед Task 3 (External DB Client). `AI_AUTH_TOKEN` — перед Task 8 (AI Evaluation Engine). Зараз `.env.local` містить placeholder-значення.
+
 - [ ] **Крок 7: Переконатись що `.env.local` в `.gitignore`**
 
 ```
