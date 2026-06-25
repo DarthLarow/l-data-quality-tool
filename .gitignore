@@ -43,3 +43,5 @@ next-env.d.ts
 
 # external system docs (not for version control)
 /externalSystemDocs/
+
+/src/generated/prisma
