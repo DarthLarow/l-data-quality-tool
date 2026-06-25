@@ -74,6 +74,9 @@ lib/
 
 ### 4.2 Delta Check (перевірка тренду)
 
+> **Прототип:** конкретні SQL-запити будуть уточнені після вивчення схеми
+> `scrapers_db` разом із розробниками скраперів. Нижче — концептуальна логіка.
+
 Порівнює кількість сутностей між двома сесіями скрапера в `scrapers_db`:
 
 ```sql
@@ -146,13 +149,22 @@ AlertThreshold         (пороги для delta flag)
   warningThresholdPct
   criticalThresholdPct
 
+Scraper                (список скраперів, синхронізується із scrapers_db)
+  id
+  appId                (унікальний ідентифікатор, відповідає scrapers_db)
+  name                 (відображувана назва)
+  supportedEntityTypes[]  (які типи сутностей підтримує цей скрапер)
+  isActive
+  lastSyncedAt         (коли останній раз оновлювався з scrapers_db)
+
 AutoCheckConfig        (конфіг для автозапуску по webhook)
   appId
-  entityTypes[]
+  environment          (staging | production)
+  entityTypes[]        (підмножина Scraper.supportedEntityTypes)
   polygonStrategy      (random | by_city_random | by_city_all)
   aiSampleSize
-  checksEnabled[]
-  enabled
+  checksEnabled[]      (які типи перевірок виконувати: api_db | delta)
+  isActive             (чи активний цей конфіг; неактивний — webhook ігнорується)
 ```
 
 ---
@@ -161,8 +173,8 @@ AutoCheckConfig        (конфіг для автозапуску по webhook)
 
 ### 6.1 Головна сторінка — Dashboard
 
-- Таблиця скраперів: назва, остання сесія, статус API→DB check, статус delta,
-  дата.
+- Таблиця скраперів (з `Scraper`): назва, остання сесія, статус API→DB check,
+  статус delta, дата. Кнопка **"Sync scrapers"** — оновлює список із `scrapers_db`.
 - Для кожного скрапера — **три графіки в ряд** (діапазон за замовчуванням: 7 днів,
   фільтрується по даті створення сесії):
 
@@ -180,10 +192,10 @@ AutoCheckConfig        (конфіг для автозапуску по webhook)
 
 ```
 1. Environment        [staging | production]
-2. Scraper            [dropdown]
+2. Scraper            [dropdown — з Scraper.isActive = true]
 3. Check types        [✓ API→DB  ✓ Delta]
 4. Polygons           [random | by ID | by city → all / random one]
-5. Entity types       [✓ dockless ✓ docked ✓ pricings ✓ zones]
+5. Entity types       [чекбокси — тільки Scraper.supportedEntityTypes для обраного скрапера]
 6. AI sample size     [числове поле, default: 5, max: 20]
 7. Compare session    [якщо Delta увімкнено — вибір попередньої сесії]
                       [Run Check]
@@ -239,7 +251,8 @@ AutoCheckConfig        (конфіг для автозапуску по webhook)
 POST /api/webhooks/session-complete
 {
   "appId": "lime",
-  "scrapersSessionId": 123
+  "scrapersSessionId": 123,
+  "env": "staging"
 }
 ```
 
@@ -249,11 +262,17 @@ POST /api/webhooks/session-complete
 
 ---
 
-## 9. Майбутні розширення (поза першою версією)
+## 9. Актуальний план (входить у першу версію)
+
+| Функціонал | Опис |
+|------------|------|
+| Config management UI | Сторінка для перегляду і редагування `AutoCheckConfig` та `AlertThreshold` |
+| Попередження розміру AI-вибірки | Оцінка середнього розміру об'єкта → рекомендований `aiSampleSize` |
+| Розширена фільтрація дашборду | Фільтр по environment, entity type, статусу перевірки |
+
+## 10. Майбутні розширення (поза першою версією)
 
 | Розширення | Опис |
 |------------|------|
 | Slack-алерти | Push при `deltaFlag = critical` або критичній кількості `notFoundInDb` |
-| Config management UI | Збережені профілі перевірок, редагування `AutoCheckConfig` |
-| Попередження розміру AI-вибірки | Оцінка середнього розміру об'єкта → рекомендований `aiSampleSize` |
-| Розширена фільтрація дашборду | Фільтр по environment, entity type, статусу перевірки |
+| Автозапуск через webhook | Потребує узгодження з командою розробників скраперів |
