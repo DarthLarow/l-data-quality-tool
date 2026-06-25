@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Node.js >= 20, pnpm як package manager
+- Node.js >= 20, npm як package manager
 - TypeScript strict mode увімкнено
 - Всі env-змінні через `.env.local` (не комітити); `.env.example` комітити
 - quality_db: PostgreSQL 16 у Docker, порт 5433 (щоб не конфліктувати з локальним 5432)
@@ -101,7 +101,7 @@
 - [ ] **Крок 1: Ініціалізувати Next.js проєкт**
 
 ```bash
-pnpm create next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --no-git
+npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --no-git
 ```
 
 Очікуваний результат: папка `src/app/`, файли `tsconfig.json`, `tailwind.config.ts`.
@@ -121,8 +121,8 @@ pnpm create next-app@latest . --typescript --tailwind --eslint --app --src-dir -
 - [ ] **Крок 3: Встановити базові залежності**
 
 ```bash
-pnpm add prisma @prisma/client pg openai
-pnpm add -D @types/pg vitest @vitejs/plugin-react @testing-library/react @testing-library/dom jsdom
+npm install prisma @prisma/client pg openai
+npm install --save-dev @types/pg vitest @vitejs/plugin-react @testing-library/react @testing-library/dom jsdom
 ```
 
 - [ ] **Крок 4: Створити `docker-compose.yml`**
@@ -232,7 +232,7 @@ git commit -m "feat: project setup with Next.js, Docker, Vitest"
 - [ ] **Крок 1: Ініціалізувати Prisma**
 
 ```bash
-pnpm prisma init --datasource-provider postgresql
+npx prisma init --datasource-provider postgresql
 ```
 
 - [ ] **Крок 2: Записати схему в `prisma/schema.prisma`**
@@ -360,7 +360,7 @@ model AutoCheckConfig {
 - [ ] **Крок 3: Запустити міграцію**
 
 ```bash
-pnpm prisma migrate dev --name init
+npx prisma migrate dev --name init
 ```
 
 Очікуваний результат: `prisma/migrations/*/migration.sql` створено, таблиці в БД.
@@ -368,7 +368,7 @@ pnpm prisma migrate dev --name init
 - [ ] **Крок 4: Перевірити схему через Prisma Studio**
 
 ```bash
-pnpm prisma studio
+npx prisma studio
 ```
 
 Відкрити `http://localhost:5555`, переконатись що всі таблиці є.
@@ -428,7 +428,7 @@ describe('countEntitiesForSession', () => {
 - [ ] **Крок 2: Запустити тест, переконатись що падає**
 
 ```bash
-pnpm test tests/lib/scrapers-db.test.ts
+npm test tests/lib/scrapers-db.test.ts
 ```
 
 Очікуваний результат: FAIL (модуль не існує).
@@ -500,7 +500,7 @@ export async function findEntitiesByIds(
 - [ ] **Крок 4: Запустити тест, переконатись що проходить**
 
 ```bash
-pnpm test tests/lib/scrapers-db.test.ts
+npm test tests/lib/scrapers-db.test.ts
 ```
 
 - [ ] **Крок 5: Commit**
@@ -563,7 +563,7 @@ SESSION RESULTS PAGE (/sessions/[id]):
 - [ ] **Крок 1: Встановити та ініціалізувати Shadcn/UI**
 
 ```bash
-pnpm dlx shadcn@latest init
+npx shadcn@latest init
 ```
 
 Обрати:
@@ -574,19 +574,19 @@ pnpm dlx shadcn@latest init
 - [ ] **Крок 2: Встановити необхідні Shadcn компоненти**
 
 ```bash
-pnpm dlx shadcn@latest add button card table tabs badge select checkbox input label tooltip
+npx shadcn@latest add button card table tabs badge select checkbox input label tooltip
 ```
 
 - [ ] **Крок 3: Встановити Recharts**
 
 ```bash
-pnpm add recharts
+npm install recharts
 ```
 
 - [ ] **Крок 4: Встановити lucide-react (іконки)**
 
 ```bash
-pnpm add lucide-react
+npm install lucide-react
 ```
 
 - [ ] **Крок 5: Перевірити що Shadcn компоненти доступні**
@@ -697,7 +697,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 - [ ] **Крок 4: Запустити dev-сервер і перевірити навігацію**
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Відкрити `http://localhost:3000` — має відображатись sidebar з трьома пунктами.
@@ -949,7 +949,7 @@ describe('compareEntities', () => {
 - [ ] **Крок 2: Запустити тести — переконатись що падають**
 
 ```bash
-pnpm test tests/lib/ai/compare.test.ts
+npm test tests/lib/ai/compare.test.ts
 ```
 
 - [ ] **Крок 3: Реалізувати `src/lib/ai/client.ts`**
@@ -1027,7 +1027,7 @@ export async function compareEntities(
 - [ ] **Крок 5: Запустити тести — переконатись що проходять**
 
 ```bash
-pnpm test tests/lib/ai/compare.test.ts
+npm test tests/lib/ai/compare.test.ts
 ```
 
 - [ ] **Крок 6: Commit**
@@ -1167,7 +1167,7 @@ describe('runApiDbCheck', () => {
 - [ ] **Крок 2: Запустити тести — переконатись що падають**
 
 ```bash
-pnpm test tests/lib/checks/api-db-check.test.ts
+npm test tests/lib/checks/api-db-check.test.ts
 ```
 
 - [ ] **Крок 3: Реалізувати `src/lib/checks/api-db-check.ts`**
@@ -1221,7 +1221,7 @@ export async function runApiDbCheck(
 - [ ] **Крок 4: Запустити тести**
 
 ```bash
-pnpm test tests/lib/checks/api-db-check.test.ts
+npm test tests/lib/checks/api-db-check.test.ts
 ```
 
 Очікуваний результат: обидва тести PASS.
@@ -1295,7 +1295,7 @@ describe('runDeltaCheck', () => {
 - [ ] **Крок 2: Запустити тести — переконатись що падають**
 
 ```bash
-pnpm test tests/lib/checks/delta-check.test.ts
+npm test tests/lib/checks/delta-check.test.ts
 ```
 
 - [ ] **Крок 3: Реалізувати `src/lib/checks/delta-check.ts`**
@@ -1349,7 +1349,7 @@ export async function runDeltaCheck(
 - [ ] **Крок 4: Запустити тести**
 
 ```bash
-pnpm test tests/lib/checks/delta-check.test.ts
+npm test tests/lib/checks/delta-check.test.ts
 ```
 
 Очікуваний результат: всі тести PASS.
@@ -1798,7 +1798,7 @@ export default function NewSessionPage() {
 - [ ] **Крок 3: Перевірити форму в браузері**
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Перейти на `http://localhost:3000/sessions/new`. Переконатись:
@@ -2487,7 +2487,7 @@ export default function DashboardPage() {
 - [ ] **Крок 4: Перевірити в браузері**
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Відкрити `http://localhost:3000`. Переконатись:
@@ -2783,7 +2783,7 @@ main().finally(() => prisma.$disconnect())
 - [ ] **Крок 2: Встановити `tsx` для запуску seed**
 
 ```bash
-pnpm add -D tsx
+npm install --save-dev tsx
 ```
 
 Додати до `package.json`:
@@ -2798,7 +2798,7 @@ pnpm add -D tsx
 - [ ] **Крок 3: Запустити seed**
 
 ```bash
-pnpm prisma db seed
+npm run seed
 ```
 
 Очікуваний результат: `Seed complete: { scraperId: ..., sessionId: ... }`
@@ -2806,7 +2806,7 @@ pnpm prisma db seed
 - [ ] **Крок 3: Запустити всі тести**
 
 ```bash
-pnpm test
+npm test
 ```
 
 Очікуваний результат: всі тести PASS.
@@ -2814,7 +2814,7 @@ pnpm test
 - [ ] **Крок 4: Ручна перевірка golden path**
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Чеклист ручної перевірки:
@@ -2843,8 +2843,8 @@ git commit -m "feat: seed data and quality verification checklist"
 
 Після виконання всіх тасків:
 
-- [ ] `pnpm test` — всі тести зелені
-- [ ] `pnpm build` — білд без TypeScript помилок
+- [ ] `npm test` — всі тести зелені
+- [ ] `npm run build` — білд без TypeScript помилок
 - [ ] Seed дані завантажені, golden path пройдено вручну
 - [ ] `scrapers_db` підключена та `POST /api/scrapers/sync` повертає реальні скрапери
 - [ ] Delta check SQL уточнено з командою розробників скраперів

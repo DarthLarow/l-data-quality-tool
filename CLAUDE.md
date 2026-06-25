@@ -37,6 +37,7 @@ Implementation plan: `docs/superpowers/plans/2026-06-25-data-quality-tool.md`
 | Шар | Технологія |
 |-----|------------|
 | Fullstack framework | Next.js (App Router) + TypeScript |
+| Package manager | npm |
 | ORM | Prisma |
 | БД інструменту (`quality_db`) | PostgreSQL (власна) |
 | БД скраперів (`scrapers_db`) | PostgreSQL (зовнішня, read-only) |
