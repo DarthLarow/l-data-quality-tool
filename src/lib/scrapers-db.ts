@@ -19,41 +19,70 @@ export async function scrapersQuery<T>(sql: string, params: unknown[] = []): Pro
   }
 }
 
-// ⚠️ PROTOTYPE: real table/column names to be confirmed with scrapers team
+// Maps our EntityType to the scrapers_db table and its external ID column
+const ENTITY_TABLE_MAP = {
+  dockless: { table: 'dockless_fleets', idCol: 'vehicle_id' },
+  docked:   { table: 'docked_fleets',   idCol: 'station_id' },
+  pricings: { table: 'pricings',        idCol: 'pricing_plan_id' },
+  zones:    { table: 'zones',           idCol: 'zone_id' },
+} as const
+
+type EntityType = keyof typeof ENTITY_TABLE_MAP
+
 export async function countEntitiesForSession(
-  appId: string,
+  _appId: string,
   sessionId: number,
-  entityType: string,
+  entityType: EntityType,
 ): Promise<number> {
+  const { table, idCol } = ENTITY_TABLE_MAP[entityType]
   const rows = await scrapersQuery<{ count: string }>(
-    `SELECT COUNT(*) as count FROM entities
-     WHERE app_id = $1 AND session_id = $2 AND entity_type = $3`,
-    [appId, sessionId, entityType],
+    `SELECT COUNT(DISTINCT e.${idCol}) AS count
+     FROM ${table} e
+     JOIN collection_tasks ct ON ct.id = e.collection_task_id
+     WHERE ct.session_id = $1`,
+    [sessionId],
   )
   return parseInt(rows[0]?.count ?? '0', 10)
 }
 
-// ⚠️ PROTOTYPE: real entity structure and table names to be confirmed
-export async function findEntityById(
-  entityId: string,
-  entityType: string,
-): Promise<Record<string, unknown> | null> {
-  const rows = await scrapersQuery<Record<string, unknown>>(
-    `SELECT * FROM entities WHERE id = $1 AND entity_type = $2 LIMIT 1`,
-    [entityId, entityType],
-  )
-  return rows[0] ?? null
-}
-
 export async function findEntitiesByIds(
   entityIds: string[],
-  entityType: string,
+  entityType: EntityType,
 ): Promise<Map<string, Record<string, unknown>>> {
   if (entityIds.length === 0) return new Map()
-  const placeholders = entityIds.map((_, i) => `$${i + 2}`).join(', ')
-  const rows = await scrapersQuery<Record<string, unknown> & { id: string }>(
-    `SELECT * FROM entities WHERE entity_type = $1 AND id IN (${placeholders})`,
-    [entityType, ...entityIds],
+  const { table, idCol } = ENTITY_TABLE_MAP[entityType]
+  const rows = await scrapersQuery<Record<string, unknown>>(
+    `SELECT * FROM ${table} WHERE ${idCol} = ANY($1::text[])`,
+    [entityIds],
   )
-  return new Map(rows.map((r) => [r.id, r]))
+  return new Map(
+    rows.map((r) => [r[idCol] as string, r]),
+  )
+}
+
+export interface PolygonBounds {
+  polygonId: string
+  boundBox: unknown // GeoJSON or raw geometry from scrapers_db
+}
+
+export async function getPolygonBounds(polygonId: string): Promise<PolygonBounds | null> {
+  const rows = await scrapersQuery<{ id: string; bound_box: unknown }>(
+    `SELECT id, bound_box FROM city_polygons WHERE id = $1`,
+    [polygonId],
+  )
+  const row = rows[0]
+  if (!row) return null
+  return { polygonId, boundBox: row.bound_box }
+}
+
+export interface AppRow {
+  app_id: string
+  name: string
+  title: string
+}
+
+export async function getScrapersApps(): Promise<AppRow[]> {
+  return scrapersQuery<AppRow>(
+    `SELECT id AS app_id, name, title FROM apps ORDER BY name`,
+  )
 }
