@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Scraper {
+  id                   String    @id @default(cuid())
+  appId                String    @unique
+  name                 String
+  supportedEntityTypes String[]
+  isActive             Boolean   @default(true)
+  lastSyncedAt         DateTime?
+  createdAt            DateTime  @default(now())
+
+  checkSessions   CheckSession[]
+  alertThresholds AlertThreshold[]
+  autoCheckConfig AutoCheckConfig?
+}
+
+model CheckSession {
+  id                String   @id @default(cuid())
+  createdAt         DateTime @default(now())
+  environment       String
+  appId             String
+  scrapersSessionId Int
+  polygonIds        String[]
+  entityTypes       String[]
+  checksEnabled     String[]
+  aiSampleSize      Int      @default(5)
+  status            String   @default("running")
+  triggeredBy       String   @default("manual")
+
+  scraper              Scraper              @relation(fields: [appId], references: [appId])
+  polygonChecks        PolygonCheck[]
+  entityCheckSummaries EntityCheckSummary[]
+  sessionDeltaChecks   SessionDeltaCheck[]
+  aiComparisons        AiComparison[]
+}
+
+model PolygonCheck {
+  id             String   @id @default(cuid())
+  checkSessionId String
+  polygonId      String
+  entityType     String
+  apiEntityIds   String[]
+  foundInDb      String[]
+  notFoundInDb   String[]
+
+  checkSession CheckSession @relation(fields: [checkSessionId], references: [id], onDelete: Cascade)
+}
+
+model EntityCheckSummary {
+  id                String @id @default(cuid())
+  checkSessionId    String
+  entityType        String
+  totalUniqueInApi  Int
+  totalFoundInDb    Int
+  totalNotFoundInDb Int
+
+  checkSession CheckSession @relation(fields: [checkSessionId], references: [id], onDelete: Cascade)
+}
+
+model SessionDeltaCheck {
+  id                        String @id @default(cuid())
+  checkSessionId            String
+  entityType                String
+  currentScrapersSessionId  Int
+  previousScrapersSessionId Int
+  currentCount              Int
+  previousCount             Int
+  deltaPercent              Float
+  deltaFlag                 String
+
+  checkSession CheckSession @relation(fields: [checkSessionId], references: [id], onDelete: Cascade)
+}
+
+model AiComparison {
+  id             String @id @default(cuid())
+  checkSessionId String
+  entityType     String
+  entityId       String
+  apiSnapshot    Json
+  dbSnapshot     Json
+  verdict        String
+  explanation    String
+
+  checkSession CheckSession @relation(fields: [checkSessionId], references: [id], onDelete: Cascade)
+}
+
+model AlertThreshold {
+  id                   String @id @default(cuid())
+  appId                String
+  entityType           String
+  warningThresholdPct  Float  @default(20)
+  criticalThresholdPct Float  @default(50)
+
+  scraper Scraper @relation(fields: [appId], references: [appId], onDelete: Cascade)
+
+  @@unique([appId, entityType])
+}
+
+model AutoCheckConfig {
+  id              String   @id @default(cuid())
+  appId           String   @unique
+  environment     String
+  entityTypes     String[]
+  polygonStrategy String
+  aiSampleSize    Int      @default(5)
+  checksEnabled   String[]
+  isActive        Boolean  @default(false)
+
+  scraper Scraper @relation(fields: [appId], references: [appId], onDelete: Cascade)
+}
