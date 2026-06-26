@@ -77,8 +77,11 @@ export default function ConfigPage() {
                         <span className="data-value text-xs text-muted-foreground">{scraper.appId}</span>
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {scraper.supportedEntityTypes.map((et) => (
+                        {(config ? config.entityTypes : scraper.supportedEntityTypes).map((et) => (
                           <Badge key={et} variant="outline" className="text-xs">{et}</Badge>
+                        ))}
+                        {config && config.checksEnabled.map((ct) => (
+                          <Badge key={ct} variant="secondary" className="text-xs">{ct === 'api_db' ? 'API→DB' : ct}</Badge>
                         ))}
                       </div>
                     </div>
