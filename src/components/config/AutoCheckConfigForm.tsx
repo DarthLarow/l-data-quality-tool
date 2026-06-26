@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ENTITY_TYPES } from '@/types'
 import type { CheckType, Environment } from '@/types'
 import type { AutoCheckConfig } from '@/generated/prisma/client'
 
@@ -97,12 +98,22 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
       <div className="space-y-1.5">
         <Label>Entity Types</Label>
         <div className="flex flex-wrap gap-4">
-          {supportedTypes.map((et) => (
-            <label key={et} className="flex items-center gap-2 cursor-pointer text-sm">
-              <Checkbox checked={entityTypes.includes(et)} onCheckedChange={() => toggleEntity(et)} />
-              {et}
-            </label>
-          ))}
+          {ENTITY_TYPES.map((et) => {
+            const supported = supportedTypes.includes(et)
+            return (
+              <label
+                key={et}
+                className={`flex items-center gap-2 text-sm ${supported ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'}`}
+              >
+                <Checkbox
+                  checked={entityTypes.includes(et)}
+                  onCheckedChange={() => toggleEntity(et)}
+                  disabled={!supported}
+                />
+                {et}
+              </label>
+            )
+          })}
         </div>
       </div>
 
