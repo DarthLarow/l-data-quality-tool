@@ -28,10 +28,10 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
     (existingConfig?.environment as Environment) ?? 'staging',
   )
   const [entityTypes, setEntityTypes]         = useState<string[]>(
-    existingConfig?.entityTypes.length ? existingConfig.entityTypes : supportedTypes,
+    existingConfig !== null ? existingConfig.entityTypes : supportedTypes,
   )
   const [checks, setChecks]                   = useState<CheckType[]>(
-    existingConfig?.checksEnabled.length
+    existingConfig !== null
       ? (existingConfig.checksEnabled as CheckType[])
       : ['api_db', 'delta'],
   )
@@ -42,11 +42,13 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
   const [isActive, setIsActive]               = useState(existingConfig?.isActive ?? true)
   const [saving, setSaving]                   = useState(false)
 
-  function toggleEntity(et: string) {
-    setEntityTypes((p) => p.includes(et) ? p.filter((x) => x !== et) : [...p, et])
+  const checksError = isActive && checks.length === 0
+
+  function setEntity(et: string, checked: boolean) {
+    setEntityTypes((p) => checked ? [...p, et] : p.filter((x) => x !== et))
   }
-  function toggleCheck(ct: CheckType) {
-    setChecks((p) => p.includes(ct) ? p.filter((x) => x !== ct) : [...p, ct])
+  function setCheck(ct: CheckType, checked: boolean) {
+    setChecks((p) => checked ? [...p, ct] : p.filter((x) => x !== ct))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -102,7 +104,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
             <label key={et} className="flex items-center gap-2 cursor-pointer text-sm">
               <Checkbox
                 checked={entityTypes.includes(et)}
-                onCheckedChange={() => toggleEntity(et)}
+                onCheckedChange={(v) => setEntity(et, v === true)}
               />
               {et}
             </label>
@@ -111,15 +113,18 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
       </div>
 
       <div className="space-y-1.5">
-        <Label>Check Types</Label>
-        <div className="flex gap-5">
+        <Label className={checksError ? 'text-destructive' : ''}>Check Types</Label>
+        <div className={`flex gap-5 rounded-md px-2 py-1 ${checksError ? 'border border-destructive bg-destructive/5' : ''}`}>
           {(['api_db', 'delta'] as CheckType[]).map((ct) => (
             <label key={ct} className="flex items-center gap-2 cursor-pointer text-sm">
-              <Checkbox checked={checks.includes(ct)} onCheckedChange={() => toggleCheck(ct)} />
+              <Checkbox checked={checks.includes(ct)} onCheckedChange={(v) => setCheck(ct, v === true)} />
               {ct === 'api_db' ? 'API→DB' : 'Delta'}
             </label>
           ))}
         </div>
+        {checksError && (
+          <p className="text-xs text-destructive">Enable at least one check type when auto-check is active.</p>
+        )}
       </div>
 
       <div className="flex items-end gap-6">
@@ -139,7 +144,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={saving}>
+        <Button type="submit" size="sm" disabled={saving || checksError}>
           {saving ? 'Saving…' : 'Save'}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
