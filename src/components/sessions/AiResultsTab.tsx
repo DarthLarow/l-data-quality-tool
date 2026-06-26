@@ -3,13 +3,12 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ENTITY_FIELD_MAPPINGS } from '@/lib/field-mappings'
 import type { AiComparison } from '@/generated/prisma/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Obj = Record<string, unknown>
-
-type FieldStatus = 'match' | 'diff' | 'unique'
 
 const verdictVariant = {
   Same:         'default',
@@ -17,44 +16,83 @@ const verdictVariant = {
   Different:    'destructive',
 } as const
 
-// ─── Field comparison ─────────────────────────────────────────────────────────
+// ─── Value cell ───────────────────────────────────────────────────────────────
 
-function fieldStatus(key: string, val: unknown, other: Obj): FieldStatus {
-  if (!(key in other)) return 'unique'
-  return JSON.stringify(val) === JSON.stringify(other[key]) ? 'match' : 'diff'
+function Val({ label, value }: { label: string; value: unknown }) {
+  return (
+    <span className="font-mono text-xs">
+      <span className="text-blue-400">"{label}"</span>
+      <span className="text-muted-foreground">: </span>
+      <span>{JSON.stringify(value)}</span>
+    </span>
+  )
 }
 
-// ─── JSON viewer with per-row highlighting ────────────────────────────────────
+// ─── Diff table ───────────────────────────────────────────────────────────────
 
-function HighlightedJson({
-  data,
-  compare,
-  highlight,
-}: {
-  data: Obj
-  compare?: Obj   // reference object for highlighting
-  highlight: boolean
-}) {
+function DiffTable({ api, db, entityType }: { api: Obj; db: Obj; entityType: string }) {
+  const mapping = ENTITY_FIELD_MAPPINGS[entityType] ?? []
+  const mappedApiKeys = new Set(mapping.map((m) => m.apiKey))
+
+  const unmappedApiKeys = Object.keys(api).filter((k) => !mappedApiKeys.has(k))
+
   return (
-    <div className="font-mono text-xs leading-5 overflow-auto max-h-96">
-      <span className="text-muted-foreground">{'{'}</span>
-      {Object.entries(data).map(([k, v]) => {
-        const status = highlight && compare ? fieldStatus(k, v, compare) : 'unique'
-        const bg =
-          status === 'match' ? 'bg-green-500/15' :
-          status === 'diff'  ? 'bg-yellow-500/15' :
-          ''
-        return (
-          <div key={k} className={`px-1 rounded ${bg}`}>
-            <span className="text-blue-400">"{k}"</span>
-            <span className="text-muted-foreground">: </span>
-            <span className="text-foreground">{JSON.stringify(v)}</span>
-            <span className="text-muted-foreground">,</span>
-          </div>
-        )
-      })}
-      <span className="text-muted-foreground">{'}'}</span>
-    </div>
+    <table className="w-full text-xs border-separate border-spacing-y-0.5">
+      <thead>
+        <tr>
+          <td className="pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground w-1/2">
+            API normalized
+          </td>
+          <td className="pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground w-1/2">
+            DB
+          </td>
+        </tr>
+      </thead>
+      <tbody>
+        {/* Mapped rows */}
+        {mapping.map(({ apiKey, dbKey }) => {
+          const apiVal = api[apiKey]
+          const dbVal  = db[dbKey]
+          const bothPresent = apiKey in api && dbKey in db
+          const match = bothPresent && JSON.stringify(apiVal) === JSON.stringify(dbVal)
+          const bg = !bothPresent ? '' : match ? 'bg-green-500/15' : 'bg-yellow-500/15'
+
+          return (
+            <tr key={apiKey} className={bg}>
+              <td className="rounded-l px-2 py-0.5 align-top">
+                {apiKey in api
+                  ? <Val label={apiKey} value={apiVal} />
+                  : <span className="text-muted-foreground/40 italic text-xs">—</span>}
+              </td>
+              <td className="rounded-r px-2 py-0.5 align-top">
+                {dbKey in db
+                  ? <Val label={dbKey} value={dbVal} />
+                  : <span className="text-muted-foreground/40 italic text-xs">—</span>}
+              </td>
+            </tr>
+          )
+        })}
+
+        {/* Divider before unmapped */}
+        {unmappedApiKeys.length > 0 && (
+          <tr>
+            <td colSpan={2} className="pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+              Unique API fields
+            </td>
+          </tr>
+        )}
+
+        {/* Unmapped API fields */}
+        {unmappedApiKeys.map((k) => (
+          <tr key={k}>
+            <td className="px-2 py-0.5 align-top">
+              <Val label={k} value={api[k]} />
+            </td>
+            <td />
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
@@ -63,37 +101,29 @@ function HighlightedJson({
 function ComparisonDetail({ c }: { c: AiComparison }) {
   const api = (c.apiSnapshot ?? {}) as Obj
   const db  = (c.dbSnapshot  ?? {}) as Obj
+  const [rawOpen, setRawOpen] = useState(false)
 
   return (
-    <div className="mt-3 grid grid-cols-3 gap-3 border-t pt-3">
-      {/* Panel 1: raw API */}
+    <div className="mt-3 border-t pt-3 space-y-3">
+      {/* API raw (collapsible) */}
       <div>
-        <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        <button
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          onClick={(e) => { e.stopPropagation(); setRawOpen((o) => !o) }}
+        >
+          {rawOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           API raw
-        </p>
-        <div className="rounded-md bg-muted p-2">
-          <HighlightedJson data={api} highlight={false} />
-        </div>
+        </button>
+        {rawOpen && (
+          <pre className="mt-1.5 rounded-md bg-muted p-2 text-xs font-mono overflow-auto max-h-48">
+            {JSON.stringify(api, null, 2)}
+          </pre>
+        )}
       </div>
 
-      {/* Panel 2: API normalized (highlighted vs DB) */}
-      <div>
-        <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          API vs DB
-        </p>
-        <div className="rounded-md bg-muted p-2">
-          <HighlightedJson data={api} compare={db} highlight />
-        </div>
-      </div>
-
-      {/* Panel 3: DB (highlighted vs API) */}
-      <div>
-        <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          DB
-        </p>
-        <div className="rounded-md bg-muted p-2">
-          <HighlightedJson data={db} compare={api} highlight />
-        </div>
+      {/* Diff table */}
+      <div className="rounded-md bg-muted p-2 overflow-auto">
+        <DiffTable api={api} db={db} entityType={c.entityType} />
       </div>
     </div>
   )
