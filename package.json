@@ -10,7 +10,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "scrapers-db:stage": "bash scripts/scrapers-db-stage.sh",
-    "scrapers-db:prod": "bash scripts/scrapers-db-prod.sh"
+    "scrapers-db:prod": "bash scripts/scrapers-db-prod.sh",
+    "seed": "tsx --env-file .env.local prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx --env-file .env.local prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -42,6 +46,7 @@
     "eslint-config-next": "16.2.9",
     "jsdom": "^27.0.1",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5",
     "vitest": "^4.1.9"
   }
