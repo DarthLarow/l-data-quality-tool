@@ -28,7 +28,9 @@ Implementation plan: `docs/superpowers/plans/2026-06-25-data-quality-tool.md`
 | **Pricings** | Ціни за використання та підписки |
 | **Zones** | Зони операційної діяльності |
 
-> Деякі скрапери можуть не підтримувати певні типи сутностей.
+> Зовнішня БД не містить метаданих про підтримувані типи сутностей для кожного
+> скрапера. Всі 4 типи доступні для вибору; якщо скрапер не підтримує тип —
+> результат буде нульовим.
 
 ---
 
@@ -36,12 +38,21 @@ Implementation plan: `docs/superpowers/plans/2026-06-25-data-quality-tool.md`
 
 | Шар | Технологія |
 |-----|------------|
-| Fullstack framework | Next.js (App Router) + TypeScript |
+| Fullstack framework | Next.js 16.2.9 (App Router) + TypeScript |
 | Package manager | npm |
-| ORM | Prisma |
-| БД інструменту (`quality_db`) | PostgreSQL (власна) |
-| БД скраперів (`scrapers_db`) | PostgreSQL (зовнішня, read-only) |
+| ORM | Prisma 6.19.3 (`provider = "prisma-client"`, output `src/generated/prisma`) |
+| БД інструменту (`quality_db`) | PostgreSQL (Docker, порт 5433) |
+| БД скраперів (`scrapers_db`) | PostgreSQL (зовнішня, read-only, через kubectl port-forward) |
+| UI | Tailwind CSS v4 + Shadcn/UI v5 (radix-nova preset) + Recharts 3 |
 | AI | OpenAI SDK, `baseURL: https://ai.groupbwt.dev/v1`, модель `minimax/MiniMax-M3` |
+| Тести | Vitest 4 (config: `vitest.config.mts`, env: `.env.local`) |
+
+### Підключення до scrapers_db
+
+Підключення через kubectl port-forward. Скрипти: `npm run scrapers-db:stage` (порт 5435),
+`npm run scrapers-db:prod` (порт 5434). Env-змінні — окремі (`SCRAPERS_DB_HOST`,
+`SCRAPERS_DB_PORT`, `SCRAPERS_DB_NAME`, `SCRAPERS_DB_USER`, `SCRAPERS_DB_PASSWORD`),
+не єдиний `DATABASE_URL`.
 
 ---
 
@@ -53,7 +64,7 @@ Implementation plan: `docs/superpowers/plans/2026-06-25-data-quality-tool.md`
 
 **Delta check** — перевірка тренду: порівнює кількість сутностей між двома сесіями
 в `scrapers_db` без залучення API. Виявляє аномальні зміни (наприклад, 1000 самокатів
-→ 100). ⚠️ Конкретні запити — прототип, уточнюються з розробниками скраперів.
+→ 100). ⚠️ Конкретні SQL-запити — прототип, уточнюються з розробниками скраперів.
 
 ---
 
@@ -61,23 +72,39 @@ Implementation plan: `docs/superpowers/plans/2026-06-25-data-quality-tool.md`
 
 | Сторінка | Опис |
 |----------|------|
-| `/` | Dashboard: таблиця скраперів + три графіки трендів для кожного (Total / Completeness / Quality), діапазон 7 днів |
+| `/` | Dashboard: список скраперів + три графіки трендів (Total / Completeness / AI Quality), фільтр по діапазону днів |
 | `/sessions/new` | Форма запуску перевірки (environment, scraper, типи перевірок, полігони, AI sample size) |
 | `/sessions/[id]` | Результати сесії: API→DB, Delta, AI-оцінки, manual review (side-by-side JSON) |
+| `/config` | Sync Scrapers + per-scraper auto-check конфіг + alert thresholds |
 
 ---
 
 ## Сценарій використання
 
-1. Користувач обирає **environment** (staging / production)
-2. Обирає **scraper** зі списку
-3. Конфігурує перевірку:
+1. Перейти на `/config`, натиснути **Sync from scrapers_db** (потребує активного port-forward)
+2. Обрати скрапер і налаштувати auto-check або перейти до ручного запуску
+3. На `/sessions/new` обрати **environment**, **scraper**, **session ID**
+4. Конфігурувати перевірку:
    - типи перевірок: API→DB та/або Delta
    - полігони: випадковий / за ID / за містом (всі або випадковий)
-   - типи сутностей (тільки підтримувані обраним скрапером)
+   - типи сутностей (всі 4 доступні; нульовий результат якщо скрапер не підтримує)
    - кількість пар для AI-аналізу (default: 5, max: 20)
    - попередня сесія для порівняння (якщо Delta увімкнено)
-4. Переглядає результати та AI-оцінки
+5. Переглядати результати на `/sessions/[id]`
+
+---
+
+## Відомі відхилення від плану
+
+| Що | Як реалізовано |
+|----|---------------|
+| Shadcn стиль `new-york/zinc` | Використовується `radix-nova` preset (Shadcn v5) |
+| `@prisma/client` | Генерується в `src/generated/prisma/client` |
+| `params` в route handlers | `Promise<{ id: string }>` (Next.js 15+ вимога) |
+| `SCRAPERS_DATABASE_URL` | Розбито на окремі `SCRAPERS_DB_*` змінні |
+| `vitest.config.ts` | Перейменовано в `vitest.config.mts` (ESM сумісність) |
+| Sync Scrapers в Sidebar | Переміщено до `/config` |
+| supportedEntityTypes фільтрація | Вимкнено — зовнішня БД не має цих метаданих |
 
 ---
 
@@ -94,5 +121,9 @@ Implementation plan: `docs/superpowers/plans/2026-06-25-data-quality-tool.md`
 
 ## Майбутні розширення
 
+- **Real scraper adapters** — реалізувати `ScraperApiAdapter` для кожного скрапера
+  (по одному файлу в `src/lib/checks/adapters/`), зареєструвати в `adapterRegistry`
+- **Уточнення Delta SQL** — погодити конкретні таблиці/запити з командою розробників скраперів
 - **Slack-алерти** — при критичних дельтах або великій кількості відсутніх сутностей
-- **Автозапуск через webhook** — сигнал від системи скраперів `POST /api/webhooks/session-complete` запускає перевірку за збереженим конфігом (потребує узгодження з командою)
+- **Автозапуск через webhook** — `POST /api/webhooks/session-complete` запускає перевірку
+  за збереженим `AutoCheckConfig` (потребує узгодження з командою)

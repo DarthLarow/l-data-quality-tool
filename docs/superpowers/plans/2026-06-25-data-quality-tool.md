@@ -2848,6 +2848,21 @@ git commit -m "feat: seed data and quality verification checklist"
 - [x] `npm test` — всі тести зелені
 - [x] `npm run build` — білд без TypeScript помилок
 - [x] Seed дані завантажені, golden path пройдено вручну
-- [x] `scrapers_db` підключена та `POST /api/scrapers/sync` повертає реальні скрапери
-- [x] Delta check SQL уточнено з командою розробників скраперів
-- [x] Адаптери для реальних скраперів реалізовані (по одному файлу на скрапер) і зареєстровані в `adapterRegistry`
+- [x] `scrapers_db` підключена та `POST /api/scrapers/sync` повертає реальні скрапери (потребує активного kubectl port-forward)
+- [ ] Delta check SQL уточнено з командою розробників скраперів
+- [ ] Адаптери для реальних скраперів реалізовані (по одному файлу на скрапер) і зареєстровані в `adapterRegistry`
+
+---
+
+## Фактичні відхилення від плану
+
+| Пункт плану | Як реалізовано |
+|-------------|---------------|
+| Shadcn стиль `new-york`, тема `zinc` | Shadcn v5 з `radix-nova` preset |
+| Prisma 5, `@prisma/client` | Prisma 6.19.3; `provider = "prisma-client"`, output `src/generated/prisma/client` |
+| Next.js 15, `params: { id: string }` | Next.js 16.2.9; `params: Promise<{ id: string }>` (async params) |
+| `SCRAPERS_DATABASE_URL` | Розбито на `SCRAPERS_DB_HOST/PORT/NAME/USER/PASSWORD` |
+| `vitest.config.ts` | `vitest.config.mts` (ESM сумісність з Vitest 4) |
+| Sync Scrapers в Sidebar | Переміщено до `/config` разом з per-scraper auto-check |
+| Entity types фільтруються по `supportedEntityTypes` | Фільтрацію вимкнено — зовнішня БД не має цих метаданих |
+| Prisma JSON fields `Record<string, unknown>` | Потребують `JSON.parse(JSON.stringify(...))` для `InputJsonValue` |
