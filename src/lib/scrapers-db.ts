@@ -4,7 +4,14 @@ let pool: Pool | null = null
 
 function getPool(): Pool {
   if (!pool) {
-    pool = new Pool({ connectionString: process.env.SCRAPERS_DATABASE_URL })
+    pool = new Pool({
+      host:     process.env.SCRAPERS_DB_HOST     ?? 'localhost',
+      port:     parseInt(process.env.SCRAPERS_DB_PORT ?? '5434', 10),
+      database: process.env.SCRAPERS_DB_NAME,
+      user:     process.env.SCRAPERS_DB_USER,
+      password: process.env.SCRAPERS_DB_PASSWORD,
+      ssl: false,
+    })
   }
   return pool
 }
