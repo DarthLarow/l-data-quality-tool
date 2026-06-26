@@ -21,6 +21,8 @@ export interface ApiDbCheckResult {
   totalNotFoundInDb: number
   notFoundIds: string[]
   polygonResults: PolygonCheckResult[]
+  /** Full API response objects keyed by entity ID — used as apiSnapshot in AI comparison */
+  apiEntityMap: Map<string, Record<string, unknown>>
 }
 
 export interface PolygonCheckResult {

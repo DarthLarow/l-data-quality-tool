@@ -37,6 +37,17 @@ describe('runApiDbCheck', () => {
     expect(result.notFoundIds).toEqual(['id-3'])
   })
 
+  it('apiEntityMap contains full entity objects from adapter', async () => {
+    const { runApiDbCheck } = await import('@/lib/checks/api-db-check')
+    const adapter = new MockScraperApiAdapter('mock', [
+      { id: 'id-1', model: 'scooter-x' },
+      { id: 'id-2', model: 'scooter-y' },
+    ])
+    const result = await runApiDbCheck(baseInput, adapter, 'dockless')
+    expect(result.apiEntityMap.get('id-1')).toMatchObject({ id: 'id-1', model: 'scooter-x' })
+    expect(result.apiEntityMap.get('id-2')).toMatchObject({ id: 'id-2', model: 'scooter-y' })
+  })
+
   it('deduplicates entities across multiple polygons', async () => {
     const { runApiDbCheck } = await import('@/lib/checks/api-db-check')
     const input = { ...baseInput, polygonIds: ['poly-1', 'poly-2'] }

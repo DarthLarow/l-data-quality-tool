@@ -37,7 +37,7 @@ const ENTITY_TABLE_MAP = {
 type EntityType = keyof typeof ENTITY_TABLE_MAP
 
 export async function countEntitiesForSession(
-  _appId: string,
+  appId: string,
   sessionId: number,
   entityType: EntityType,
 ): Promise<number> {
@@ -46,8 +46,9 @@ export async function countEntitiesForSession(
     `SELECT COUNT(DISTINCT e.${idCol}) AS count
      FROM ${table} e
      JOIN collection_tasks ct ON ct.id = e.collection_task_id
-     WHERE ct.session_id = $1`,
-    [sessionId],
+     WHERE ct.session_id = $1
+       AND e.provider = $2`,
+    [sessionId, appId],
   )
   return parseInt(rows[0]?.count ?? '0', 10)
 }
@@ -55,12 +56,15 @@ export async function countEntitiesForSession(
 export async function findEntitiesByIds(
   entityIds: string[],
   entityType: EntityType,
+  appId?: string,
 ): Promise<Map<string, Record<string, unknown>>> {
   if (entityIds.length === 0) return new Map()
   const { table, idCol } = ENTITY_TABLE_MAP[entityType]
   const rows = await scrapersQuery<Record<string, unknown>>(
-    `SELECT * FROM ${table} WHERE ${idCol} = ANY($1::text[])`,
-    [entityIds],
+    appId
+      ? `SELECT * FROM ${table} WHERE ${idCol} = ANY($1::text[]) AND provider = $2`
+      : `SELECT * FROM ${table} WHERE ${idCol} = ANY($1::text[])`,
+    appId ? [entityIds, appId] : [entityIds],
   )
   return new Map(
     rows.map((r) => [r[idCol] as string, r]),

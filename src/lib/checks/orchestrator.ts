@@ -61,14 +61,11 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
         const sampleIds = sampleRandom([...new Set(allFoundIds)], input.aiSampleSize)
 
         for (const entityId of sampleIds) {
-          const dbMap = await findEntitiesByIds([entityId], entityType)
+          const dbMap = await findEntitiesByIds([entityId], entityType, input.appId)
           const dbSnapshot = dbMap.get(entityId)
           if (!dbSnapshot) continue
 
-          // apiSnapshot: entity data as seen in the polygon check
-          const apiSnapshot = result.polygonResults
-            .flatMap((p) => p.apiEntityIds.includes(entityId) ? [{ id: entityId }] : [])
-            .at(0) ?? { id: entityId }
+          const apiSnapshot = result.apiEntityMap.get(entityId) ?? { id: entityId }
 
           const comparison = await compareEntities(apiSnapshot, dbSnapshot, entityType)
 
