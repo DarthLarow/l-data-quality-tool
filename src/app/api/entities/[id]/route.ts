@@ -11,7 +11,8 @@ export async function GET(
   const entityType = VALID.includes(typeParam as typeof VALID[number])
     ? (typeParam as typeof VALID[number])
     : 'dockless'
-  const map = await findEntitiesByIds([id], entityType)
+  const provider = req.nextUrl.searchParams.get('provider') ?? undefined
+  const map = await findEntitiesByIds([id], entityType, provider)
   const entity = map.get(id)
   if (!entity) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(entity)

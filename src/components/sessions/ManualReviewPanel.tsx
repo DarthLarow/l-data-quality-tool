@@ -2,14 +2,16 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import type { PolygonCheck } from '@/generated/prisma/client'
+import type { AiComparison, PolygonCheck } from '@/generated/prisma/client'
 
 interface Props {
-  polygonChecks: PolygonCheck[]
-  entityType: string
+  polygonChecks:  PolygonCheck[]
+  aiComparisons:  AiComparison[]
+  entityType:     string
+  appId:          string
 }
 
-export function ManualReviewPanel({ polygonChecks, entityType }: Props) {
+export function ManualReviewPanel({ polygonChecks, aiComparisons, entityType, appId }: Props) {
   const [entityId, setEntityId]   = useState('')
   const [apiData, setApiData]     = useState<unknown>(null)
   const [dbData, setDbData]       = useState<unknown>(null)
@@ -18,9 +20,15 @@ export function ManualReviewPanel({ polygonChecks, entityType }: Props) {
   async function handleLookup() {
     setLoading(true)
     const pc = polygonChecks.find((p) => p.apiEntityIds.includes(entityId))
-    setApiData(pc ? { id: entityId, polygonId: pc.polygonId } : { error: 'Not found in API results' })
+    if (pc) {
+      // Use full API snapshot from AI comparison if available; fall back to {id, polygonId}
+      const ai = aiComparisons.find((a) => a.entityId === entityId)
+      setApiData(ai?.apiSnapshot ?? { id: entityId, polygonId: pc.polygonId })
+    } else {
+      setApiData({ error: 'Not found in API results' })
+    }
 
-    const res = await fetch(`/api/entities/${entityId}?type=${entityType}`)
+    const res = await fetch(`/api/entities/${entityId}?type=${entityType}&provider=${appId}`)
     setDbData(res.ok ? await res.json() : { error: 'Not found in DB' })
     setLoading(false)
   }

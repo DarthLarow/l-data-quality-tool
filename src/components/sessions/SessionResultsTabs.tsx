@@ -68,7 +68,12 @@ export function SessionResultsTabs({ session }: Props) {
                 <h3 className="mb-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Manual Review
                 </h3>
-                <ManualReviewPanel polygonChecks={polygonChecks} entityType={et} />
+                <ManualReviewPanel
+                  polygonChecks={polygonChecks}
+                  aiComparisons={aiComparisons}
+                  entityType={et}
+                  appId={session.appId}
+                />
               </section>
             )}
           </TabsContent>
