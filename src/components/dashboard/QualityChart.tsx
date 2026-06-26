@@ -1,6 +1,15 @@
 'use client'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
+  ResponsiveContainer, CartesianGrid, Cell,
+} from 'recharts'
 import type { AiComparison } from '@/generated/prisma/client'
+
+const VERDICTS = [
+  { key: 'Same',         color: '#22c55e', label: 'Same' },
+  { key: 'SomewhatSame', color: '#f59e0b', label: 'Somewhat Same' },
+  { key: 'Different',    color: '#ef4444', label: 'Different' },
+] as const
 
 interface Props {
   aiComparisons: AiComparison[]
@@ -22,14 +31,30 @@ export function QualityChart({ aiComparisons, sessionDates }: Props) {
     <div>
       <p className="mb-1 text-xs font-semibold text-muted-foreground">AI Quality</p>
       <ResponsiveContainer width="100%" height={160}>
-        <BarChart data={data}>
-          <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-          <YAxis tick={{ fontSize: 10 }} width={30} />
-          <Tooltip />
-          <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey="Same"         fill="#10b981" stackId="a" />
-          <Bar dataKey="SomewhatSame" fill="#f59e0b" stackId="a" />
-          <Bar dataKey="Different"    fill="#ef4444" stackId="a" />
+        <BarChart
+          data={data}
+          barCategoryGap="30%"
+          barGap={3}
+          margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+        >
+          <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.06} />
+          <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10 }} width={28} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip
+            cursor={{ fill: 'currentColor', fillOpacity: 0.04 }}
+            contentStyle={{ fontSize: 12 }}
+          />
+          <Legend
+            iconType="square"
+            iconSize={10}
+            wrapperStyle={{ fontSize: 11 }}
+            formatter={(value) => VERDICTS.find((v) => v.key === value)?.label ?? value}
+          />
+          {VERDICTS.map(({ key, color }) => (
+            <Bar key={key} dataKey={key} fill={color} maxBarSize={22} radius={[2, 2, 0, 0]}>
+              {data.map((_, i) => <Cell key={i} fill={color} />)}
+            </Bar>
+          ))}
         </BarChart>
       </ResponsiveContainer>
     </div>

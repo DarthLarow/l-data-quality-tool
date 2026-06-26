@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScraperChartRow } from './ScraperChartRow'
-import { RefreshCw } from 'lucide-react'
 import type { CheckSession, EntityCheckSummary, SessionDeltaCheck, AiComparison, Scraper } from '@/generated/prisma/client'
 
 interface SessionData extends CheckSession {
@@ -28,7 +27,6 @@ const flagVariant = {
 export function ScraperDashboard() {
   const [scrapers, setScrapers] = useState<ScraperWithSessions[]>([])
   const [days, setDays]         = useState('7')
-  const [syncing, setSyncing]   = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
@@ -37,13 +35,6 @@ export function ScraperDashboard() {
   }, [days])
 
   useEffect(() => { void load() }, [load])
-
-  async function handleSync() {
-    setSyncing(true)
-    await fetch('/api/scrapers/sync', { method: 'POST' })
-    await load()
-    setSyncing(false)
-  }
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -57,20 +48,14 @@ export function ScraperDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <div className="flex items-center gap-3">
-          <Select value={days} onValueChange={setDays}>
-            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="14">Last 14 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
-            <RefreshCw size={14} className={syncing ? 'animate-spin mr-1.5' : 'mr-1.5'} />
-            Sync Scrapers
-          </Button>
-        </div>
+        <Select value={days} onValueChange={setDays}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">Last 7 days</SelectItem>
+            <SelectItem value="14">Last 14 days</SelectItem>
+            <SelectItem value="30">Last 30 days</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-3">

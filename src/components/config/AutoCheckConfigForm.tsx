@@ -5,25 +5,43 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ENTITY_TYPES } from '@/types'
-import type { EntityType, CheckType, Environment } from '@/types'
+import type { CheckType, Environment } from '@/types'
+import type { AutoCheckConfig } from '@/generated/prisma/client'
 
-interface Props {
-  scrapers: { appId: string; name: string }[]
-  onSaved:  () => void
+interface ScraperInfo {
+  appId:                string
+  supportedEntityTypes: string[]
 }
 
-export function AutoCheckConfigForm({ scrapers, onSaved }: Props) {
-  const [appId, setAppId]             = useState('')
-  const [environment, setEnvironment] = useState<Environment>('staging')
-  const [entityTypes, setEntityTypes] = useState<EntityType[]>(['dockless'])
-  const [checks, setChecks]           = useState<CheckType[]>(['api_db', 'delta'])
-  const [aiSampleSize, setAiSampleSize] = useState(5)
-  const [polygonStrategy, setPolygonStrategy] = useState('random')
-  const [isActive, setIsActive]       = useState(true)
-  const [saving, setSaving]           = useState(false)
+interface Props {
+  scraper:        ScraperInfo
+  existingConfig: AutoCheckConfig | null
+  onSaved:        () => void
+  onCancel:       () => void
+}
 
-  function toggleEntity(et: EntityType) {
+export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel }: Props) {
+  const supportedTypes = scraper.supportedEntityTypes
+
+  const [environment, setEnvironment]         = useState<Environment>(
+    (existingConfig?.environment as Environment) ?? 'staging',
+  )
+  const [entityTypes, setEntityTypes]         = useState<string[]>(
+    existingConfig?.entityTypes.length ? existingConfig.entityTypes : supportedTypes,
+  )
+  const [checks, setChecks]                   = useState<CheckType[]>(
+    existingConfig?.checksEnabled.length
+      ? (existingConfig.checksEnabled as CheckType[])
+      : ['api_db', 'delta'],
+  )
+  const [polygonStrategy, setPolygonStrategy] = useState(
+    existingConfig?.polygonStrategy ?? 'random',
+  )
+  const [aiSampleSize, setAiSampleSize]       = useState(existingConfig?.aiSampleSize ?? 5)
+  const [isActive, setIsActive]               = useState(existingConfig?.isActive ?? true)
+  const [saving, setSaving]                   = useState(false)
+
+  function toggleEntity(et: string) {
     setEntityTypes((p) => p.includes(et) ? p.filter((x) => x !== et) : [...p, et])
   }
   function toggleCheck(ct: CheckType) {
@@ -36,26 +54,23 @@ export function AutoCheckConfigForm({ scrapers, onSaved }: Props) {
     await fetch('/api/config/auto-check', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ appId, environment, entityTypes, checksEnabled: checks, aiSampleSize, polygonStrategy, isActive }),
+      body:    JSON.stringify({
+        appId: scraper.appId,
+        environment,
+        entityTypes,
+        checksEnabled: checks,
+        aiSampleSize,
+        polygonStrategy,
+        isActive,
+      }),
     })
     setSaving(false)
     onSaved()
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-md border bg-muted/30 p-4">
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label>Scraper</Label>
-          <Select value={appId} onValueChange={setAppId}>
-            <SelectTrigger><SelectValue placeholder="Select scraper" /></SelectTrigger>
-            <SelectContent>
-              {scrapers.map((s) => (
-                <SelectItem key={s.appId} value={s.appId}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
         <div className="space-y-1.5">
           <Label>Environment</Label>
           <Select value={environment} onValueChange={(v) => setEnvironment(v as Environment)}>
@@ -66,12 +81,23 @@ export function AutoCheckConfigForm({ scrapers, onSaved }: Props) {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1.5">
+          <Label>Polygon Strategy</Label>
+          <Select value={polygonStrategy} onValueChange={setPolygonStrategy}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="random">Random polygon</SelectItem>
+              <SelectItem value="by_city_all">By city — all</SelectItem>
+              <SelectItem value="by_city_random">By city — random</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-1.5">
         <Label>Entity Types</Label>
         <div className="flex flex-wrap gap-4">
-          {ENTITY_TYPES.map((et) => (
+          {supportedTypes.map((et) => (
             <label key={et} className="flex items-center gap-2 cursor-pointer text-sm">
               <Checkbox checked={entityTypes.includes(et)} onCheckedChange={() => toggleEntity(et)} />
               {et}
@@ -92,24 +118,13 @@ export function AutoCheckConfigForm({ scrapers, onSaved }: Props) {
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label>Polygon Strategy</Label>
-        <Select value={polygonStrategy} onValueChange={setPolygonStrategy}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="random">Random polygon</SelectItem>
-            <SelectItem value="by_city_all">By city — all polygons</SelectItem>
-            <SelectItem value="by_city_random">By city — random polygon</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       <div className="flex items-end gap-6">
         <div className="space-y-1.5">
           <Label>AI Sample Size</Label>
           <Input
             type="number" min={0} max={20}
-            value={aiSampleSize} onChange={(e) => setAiSampleSize(Number(e.target.value))}
+            value={aiSampleSize}
+            onChange={(e) => setAiSampleSize(Number(e.target.value))}
             className="w-24 font-mono"
           />
         </div>
@@ -119,9 +134,14 @@ export function AutoCheckConfigForm({ scrapers, onSaved }: Props) {
         </label>
       </div>
 
-      <Button type="submit" disabled={!appId || saving}>
-        {saving ? 'Saving…' : 'Save Config'}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
     </form>
   )
 }
