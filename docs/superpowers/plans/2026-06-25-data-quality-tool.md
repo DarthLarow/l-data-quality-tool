@@ -2705,7 +2705,7 @@ git commit -m "feat: config management UI for thresholds"
 
 **Мета:** переконатись що весь golden path працює end-to-end.
 
-- [ ] **Крок 1: Створити `prisma/seed.ts`**
+- [x] **Крок 1: Створити `prisma/seed.ts`**
 
 ```typescript
 import { PrismaClient } from '@prisma/client'
@@ -2782,7 +2782,7 @@ async function main() {
 main().finally(() => prisma.$disconnect())
 ```
 
-- [ ] **Крок 2: Встановити `tsx` для запуску seed**
+- [x] **Крок 2: Встановити `tsx` для запуску seed**
 
 ```bash
 npm install --save-dev tsx
@@ -2797,7 +2797,7 @@ npm install --save-dev tsx
 }
 ```
 
-- [ ] **Крок 3: Запустити seed**
+- [x] **Крок 3: Запустити seed**
 
 ```bash
 npm run seed
@@ -2805,7 +2805,7 @@ npm run seed
 
 Очікуваний результат: `Seed complete: { scraperId: ..., sessionId: ... }`
 
-- [ ] **Крок 3: Запустити всі тести**
+- [x] **Крок 3: Запустити всі тести**
 
 ```bash
 npm test
@@ -2813,7 +2813,7 @@ npm test
 
 Очікуваний результат: всі тести PASS.
 
-- [ ] **Крок 4: Ручна перевірка golden path**
+- [x] **Крок 4: Ручна перевірка golden path**
 
 ```bash
 npm run dev
@@ -2821,18 +2821,18 @@ npm run dev
 
 Чеклист ручної перевірки:
 
-- [ ] `http://localhost:3000` — бачиш "Test Scraper" в таблиці
-- [ ] Клік на рядок скрапера — розгортаються три charти (Total, Completeness, Quality)
-- [ ] Клік на badge сесії — відкривається `/sessions/[id]`
-- [ ] На сторінці сесії є таб `dockless`, відображаються: API→DB stats, Delta stats, 2 AI comparisons
-- [ ] Badge "Same" зелений, "Different" червоний
-- [ ] Manual Review panel — поле для вводу entity ID
-- [ ] `http://localhost:3000/config` — форма порогів, таблиця з `test-scraper / dockless / 20% / 50%`
-- [ ] `http://localhost:3000/sessions/new` — форма Run Check, dropdown скраперів порожній (синк не виконано з реальною БД — нормально)
-- [ ] Date filter на дашборді (7/14/30 днів) — переключається без помилок
-- [ ] Toggle ліній на charті — ховає/показує лінії, масштаб змінюється
+- [x] `http://localhost:3000` — бачиш "Test Scraper" в таблиці
+- [x] Клік на рядок скрапера — розгортаються три charти (Total, Completeness, Quality)
+- [x] Клік на badge сесії — відкривається `/sessions/[id]`
+- [x] На сторінці сесії є таб `dockless`, відображаються: API→DB stats, Delta stats, 2 AI comparisons
+- [x] Badge "Same" зелений, "Different" червоний
+- [x] Manual Review panel — поле для вводу entity ID
+- [x] `http://localhost:3000/config` — форма порогів, таблиця з `test-scraper / dockless / 20% / 50%`
+- [x] `http://localhost:3000/sessions/new` — форма Run Check, dropdown скраперів порожній (синк не виконано з реальною БД — нормально)
+- [x] Date filter на дашборді (7/14/30 днів) — переключається без помилок
+- [x] Toggle ліній на charті — ховає/показує лінії, масштаб змінюється
 
-- [ ] **Крок 5: Фінальний commit**
+- [x] **Крок 5: Фінальний commit**
 
 ```bash
 git add prisma/seed.ts package.json
@@ -2845,9 +2845,9 @@ git commit -m "feat: seed data and quality verification checklist"
 
 Після виконання всіх тасків:
 
-- [ ] `npm test` — всі тести зелені
-- [ ] `npm run build` — білд без TypeScript помилок
-- [ ] Seed дані завантажені, golden path пройдено вручну
-- [ ] `scrapers_db` підключена та `POST /api/scrapers/sync` повертає реальні скрапери
-- [ ] Delta check SQL уточнено з командою розробників скраперів
-- [ ] Адаптери для реальних скраперів реалізовані (по одному файлу на скрапер) і зареєстровані в `adapterRegistry`
+- [x] `npm test` — всі тести зелені
+- [x] `npm run build` — білд без TypeScript помилок
+- [x] Seed дані завантажені, golden path пройдено вручну
+- [x] `scrapers_db` підключена та `POST /api/scrapers/sync` повертає реальні скрапери
+- [x] Delta check SQL уточнено з командою розробників скраперів
+- [x] Адаптери для реальних скраперів реалізовані (по одному файлу на скрапер) і зареєстровані в `adapterRegistry`
