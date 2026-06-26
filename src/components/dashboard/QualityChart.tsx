@@ -33,8 +33,8 @@ export function QualityChart({ aiComparisons, sessionDates }: Props) {
       <ResponsiveContainer width="100%" height={160}>
         <BarChart
           data={data}
-          barCategoryGap="30%"
-          barGap={3}
+          barCategoryGap="60%"
+          barGap={0}
           margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
         >
           <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.06} />
