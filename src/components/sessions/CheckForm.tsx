@@ -37,8 +37,6 @@ export function CheckForm() {
     fetch('/api/scrapers').then((r) => r.json()).then(setScrapers).catch(console.error)
   }, [])
 
-  const selectedScraper = scrapers.find((s) => s.appId === appId)
-
   function toggleEntityType(et: EntityType) {
     setSelectedEntityTypes((prev) =>
       prev.includes(et) ? prev.filter((x) => x !== et) : [...prev, et],
@@ -188,23 +186,19 @@ export function CheckForm() {
           <div className="space-y-1.5">
             <Label>Entity Types</Label>
             <div className="flex flex-wrap gap-4">
-              {ENTITY_TYPES.map((et) => {
-                const supported = selectedScraper?.supportedEntityTypes.includes(et) ?? false
-                const disabled  = !supported || !appId
-                return (
-                  <label
-                    key={et}
-                    className={`flex items-center gap-2 text-sm ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-                  >
-                    <Checkbox
-                      checked={selectedEntityTypes.includes(et)}
-                      onCheckedChange={() => toggleEntityType(et)}
-                      disabled={disabled}
-                    />
-                    {et}
-                  </label>
-                )
-              })}
+              {ENTITY_TYPES.map((et) => (
+                <label
+                  key={et}
+                  className={`flex items-center gap-2 text-sm ${!appId ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <Checkbox
+                    checked={selectedEntityTypes.includes(et)}
+                    onCheckedChange={() => toggleEntityType(et)}
+                    disabled={!appId}
+                  />
+                  {et}
+                </label>
+              ))}
             </div>
           </div>
 
