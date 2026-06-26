@@ -13,6 +13,7 @@ model Scraper {
   appId                String    @unique
   name                 String
   supportedEntityTypes String[]
+  cities               String[]  @default([])
   isActive             Boolean   @default(true)
   lastSyncedAt         DateTime?
   createdAt            DateTime  @default(now())
@@ -110,6 +111,7 @@ model AutoCheckConfig {
   environment     String
   entityTypes     String[]
   polygonStrategy String
+  polygonCity     String?
   aiSampleSize    Int      @default(5)
   checksEnabled   String[]
   isActive        Boolean  @default(false)

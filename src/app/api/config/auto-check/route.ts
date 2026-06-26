@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     checksEnabled: string[]
     aiSampleSize: number
     polygonStrategy: string
+    polygonCity: string | null
     isActive: boolean
   }
   const config = await prisma.autoCheckConfig.upsert({

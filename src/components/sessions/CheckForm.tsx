@@ -11,9 +11,10 @@ import type { EntityType, CheckType, Environment, PolygonStrategy, CheckSessionI
 import { ENTITY_TYPES } from '@/types'
 
 interface ScraperOption {
-  appId: string
-  name: string
+  appId:                string
+  name:                 string
   supportedEntityTypes: string[]
+  cities:               string[]
 }
 
 export function CheckForm() {
@@ -24,6 +25,7 @@ export function CheckForm() {
 
   const [environment, setEnvironment]                       = useState<Environment>('staging')
   const [appId, setAppId]                                   = useState('')
+  const selectedScraper = scrapers.find((s) => s.appId === appId)
   const [scrapersSessionId, setScrapersSessionId]           = useState('')
   const [previousScrapersSessionId, setPreviousSessionId]   = useState('')
   const [polygonStrategy, setPolygonStrategy]               = useState<PolygonStrategy>('random')
@@ -173,12 +175,23 @@ export function CheckForm() {
               />
             )}
             {(polygonStrategy === 'by_city_all' || polygonStrategy === 'by_city_random') && (
-              <Input
-                className="mt-2"
-                placeholder="City name"
-                value={polygonCity}
-                onChange={(e) => setPolygonCity(e.target.value)}
-              />
+              selectedScraper && selectedScraper.cities.length > 0 ? (
+                <Select value={polygonCity} onValueChange={setPolygonCity}>
+                  <SelectTrigger className="mt-2"><SelectValue placeholder="Select city" /></SelectTrigger>
+                  <SelectContent>
+                    {selectedScraper.cities.map((city) => (
+                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  className="mt-2"
+                  placeholder="City name"
+                  value={polygonCity}
+                  onChange={(e) => setPolygonCity(e.target.value)}
+                />
+              )
             )}
           </div>
 

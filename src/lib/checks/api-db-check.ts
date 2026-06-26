@@ -1,4 +1,4 @@
-import { findEntitiesByIds, getPolygonBounds } from '@/lib/scrapers-db'
+import { findEntitiesByIds, resolvePolygons } from '@/lib/scrapers-db'
 import type { ScraperApiAdapter } from './adapters/scraper-adapter'
 import type { CheckSessionInput, EntityType, ApiDbCheckResult, PolygonCheckResult } from '@/types'
 
@@ -10,8 +10,8 @@ export async function runApiDbCheck(
   const polygonResults: PolygonCheckResult[] = []
   const allApiIds = new Set<string>()
 
-  for (const polygonId of input.polygonIds) {
-    const bounds = await getPolygonBounds(polygonId) ?? { polygonId, boundBox: null }
+  const polygons = await resolvePolygons(input.appId, input.polygonIds)
+  for (const bounds of polygons) {
     const entities = await adapter.fetchEntities(bounds, entityType)
     const apiEntityIds = entities.map((e) => e.id)
     apiEntityIds.forEach((id) => allApiIds.add(id))
@@ -20,7 +20,7 @@ export async function runApiDbCheck(
     const foundInDb    = apiEntityIds.filter((id) => foundMap.has(id))
     const notFoundInDb = apiEntityIds.filter((id) => !foundMap.has(id))
 
-    polygonResults.push({ polygonId, entityType, apiEntityIds, foundInDb, notFoundInDb })
+    polygonResults.push({ polygonId: bounds.polygonId, entityType, apiEntityIds, foundInDb, notFoundInDb })
   }
 
   const uniqueIds = Array.from(allApiIds)

@@ -12,6 +12,7 @@ import type { AutoCheckConfig } from '@/generated/prisma/client'
 interface ScraperInfo {
   appId:                string
   supportedEntityTypes: string[]
+  cities:               string[]
 }
 
 interface Props {
@@ -38,6 +39,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
   const [polygonStrategy, setPolygonStrategy] = useState(
     existingConfig?.polygonStrategy ?? 'random',
   )
+  const [polygonCity, setPolygonCity]         = useState(existingConfig?.polygonCity ?? '')
   const [aiSampleSize, setAiSampleSize]       = useState(existingConfig?.aiSampleSize ?? 5)
   const [isActive, setIsActive]               = useState(existingConfig?.isActive ?? true)
   const [saving, setSaving]                   = useState(false)
@@ -64,6 +66,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
         checksEnabled: checks,
         aiSampleSize,
         polygonStrategy,
+        polygonCity: polygonCity || null,
         isActive,
       }),
     })
@@ -96,6 +99,28 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
           </Select>
         </div>
       </div>
+
+      {(polygonStrategy === 'by_city_all' || polygonStrategy === 'by_city_random') && (
+        <div className="space-y-1.5">
+          <Label>City</Label>
+          {scraper.cities.length > 0 ? (
+            <Select value={polygonCity} onValueChange={setPolygonCity}>
+              <SelectTrigger><SelectValue placeholder="Select city" /></SelectTrigger>
+              <SelectContent>
+                {scraper.cities.map((city) => (
+                  <SelectItem key={city} value={city}>{city}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              placeholder="City name"
+              value={polygonCity}
+              onChange={(e) => setPolygonCity(e.target.value)}
+            />
+          )}
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <Label>Entity Types</Label>

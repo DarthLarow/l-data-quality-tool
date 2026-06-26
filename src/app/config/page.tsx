@@ -72,18 +72,17 @@ export default function ConfigPage() {
                   {/* Scraper row */}
                   <div className="flex items-center gap-3 p-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{scraper.name}</span>
-                        <span className="data-value text-xs text-muted-foreground">{scraper.appId}</span>
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {(config ? config.entityTypes : scraper.supportedEntityTypes).map((et) => (
-                          <Badge key={et} variant="outline" className="text-xs">{et}</Badge>
-                        ))}
-                        {config && config.checksEnabled.map((ct) => (
-                          <Badge key={ct} variant="secondary" className="text-xs">{ct === 'api_db' ? 'API→DB' : ct}</Badge>
-                        ))}
-                      </div>
+                      <span className="font-medium text-sm">{scraper.name}</span>
+                      {config && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {config.entityTypes.map((et) => (
+                            <Badge key={et} variant="outline" className="text-xs">{et}</Badge>
+                          ))}
+                          {config.checksEnabled.map((ct) => (
+                            <Badge key={ct} variant="secondary" className="text-xs">{ct === 'api_db' ? 'API→DB' : ct}</Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
@@ -130,7 +129,7 @@ export default function ConfigPage() {
                   {isEditing && (
                     <div className="border-t px-3 pb-3 pt-2">
                       <AutoCheckConfigForm
-                        scraper={{ appId: scraper.appId, supportedEntityTypes: scraper.supportedEntityTypes }}
+                        scraper={{ appId: scraper.appId, supportedEntityTypes: scraper.supportedEntityTypes, cities: scraper.cities }}
                         existingConfig={config}
                         onSaved={async () => { await load(); setEditingAppId(null) }}
                         onCancel={() => setEditingAppId(null)}

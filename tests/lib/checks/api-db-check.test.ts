@@ -9,7 +9,9 @@ vi.mock('@/lib/scrapers-db', () => ({
     if (ids.includes('id-2')) map.set('id-2', { vehicle_id: 'id-2' })
     return map
   }),
-  getPolygonBounds: vi.fn().mockResolvedValue({ polygonId: 'poly-1', boundBox: null }),
+  resolvePolygons: vi.fn().mockImplementation(async (_appId: string, polygonIds: string[]) =>
+    polygonIds.map((pid) => ({ polygonId: pid, boundBox: null, polygonType: null, city: null })),
+  ),
 }))
 
 const baseInput: CheckSessionInput = {

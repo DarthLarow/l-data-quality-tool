@@ -1,8 +1,11 @@
 import type { EntityType, ScraperEntity } from '@/types'
+import { ArioScraperApiAdapter } from './ario-adapter'
 
 export interface PolygonBounds {
-  polygonId: string
-  boundBox: unknown // geometry from city_polygons.bound_box
+  polygonId:   string
+  boundBox:    unknown
+  polygonType: Record<string, unknown> | null // PostgreSQL JSONB object, already parsed
+  city:        string | null
 }
 
 export interface ScraperApiAdapter {
@@ -12,5 +15,8 @@ export interface ScraperApiAdapter {
 
 export type AdapterRegistry = Map<string, ScraperApiAdapter>
 
-// Populated when each real scraper adapter is implemented
-export const adapterRegistry: AdapterRegistry = new Map()
+// Registry key = scrapers_db.apps.name (synced into quality_db.Scraper.appId).
+// Confirmed: Ario app name is 'ario' (id=7 in stage scrapers_db).
+export const adapterRegistry: AdapterRegistry = new Map([
+  ['ario', new ArioScraperApiAdapter()],
+])

@@ -47,12 +47,21 @@ Implementation plan: `docs/superpowers/plans/2026-06-25-data-quality-tool.md`
 | AI | OpenAI SDK, `baseURL: https://ai.groupbwt.dev/v1`, модель `minimax/MiniMax-M3` |
 | Тести | Vitest 4 (config: `vitest.config.mts`, env: `.env.local`) |
 
+### appId vs apps.id
+
+`Scraper.appId` в quality_db = `apps.name` зі scrapers_db (наприклад `'ario'`, `'bird'`), **не** `apps.id` (integer).
+Це рішення прийнято явно: `apps.name` стабільний між середовищами, `apps.id` — ні.
+Sync route завжди конвертує: `appId = app.name`.
+
 ### Підключення до scrapers_db
 
 Підключення через kubectl port-forward. Скрипти: `npm run scrapers-db:stage` (порт 5435),
 `npm run scrapers-db:prod` (порт 5434). Env-змінні — окремі (`SCRAPERS_DB_HOST`,
 `SCRAPERS_DB_PORT`, `SCRAPERS_DB_NAME`, `SCRAPERS_DB_USER`, `SCRAPERS_DB_PASSWORD`),
 не єдиний `DATABASE_URL`.
+
+> **ЗАБОРОНЕНО:** будь-який запис до `scrapers_db` (INSERT / UPDATE / DELETE).
+> Зовнішня БД — **тільки для читання**. Для запису використовувати `quality_db` (Prisma).
 
 ---
 
