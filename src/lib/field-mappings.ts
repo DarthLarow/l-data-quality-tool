@@ -21,30 +21,38 @@ const currencySymbol = (v: unknown) => {
   return v
 }
 
+const validDayToDesc = (v: unknown) =>
+  typeof v === 'number' ? `Valid for ${v} day(s)` : v
+
+const toString = (v: unknown) => String(v)
+
 // Sources: externalSystemDocs/ecommerce-scraper-main/docs/ario/API_to_DB_mapping.md
 export const ENTITY_FIELD_MAPPINGS: Record<string, FieldMapping> = {
   // POST /app/api/carlist → dockless_fleets
   dockless: [
-    { apiKey: 'carId',        dbKey: 'vehicle_id'  },
-    { apiKey: 'stickerid',    dbKey: 'name'         },
-    { apiKey: 'battery',      dbKey: 'battery'      },
-    { apiKey: 'latitude',     dbKey: 'location_lat' },
-    { apiKey: 'longitude',    dbKey: 'location_lng' },
+    { apiKey: 'carId',        dbKey: 'vehicle_id'   },
+    { apiKey: 'stickerid',    dbKey: 'name'          },
+    { apiKey: 'battery',      dbKey: 'battery'       },
+    { apiKey: 'latitude',     dbKey: 'location_lat'  },
+    { apiKey: 'longitude',    dbKey: 'location_lng'  },
     { apiKey: 'helmetStatus', dbKey: 'helmet_status', transform: helmetStatus, note: '0→absent, 1→attached' },
   ],
 
   // POST /app/api/getoutofoalist → zones
+  // Snapshot excludes *_coordinate_list arrays (captured in `geometry`).
   zones: [
-    { apiKey: 'id',       dbKey: 'zone_id'     },
-    { apiKey: 'area_name', dbKey: 'zone_name'   },
-    { apiKey: 'area_id',   dbKey: 'area_zone_id' },
+    { apiKey: 'id',       dbKey: 'zone_id'          },
+    { apiKey: 'area_name', dbKey: 'zone_name'        },
+    { apiKey: 'area_id',  dbKey: 'area_zone_id',     transform: toString, note: 'str()' },
+    { apiKey: 'geometry', dbKey: 'geometry_coordinates' },
   ],
 
   // POST /app/api/pay/pricelist + /app/api/getridepassbycity → pricings
-  // Both sub-types share this table; fields absent for one type show "—"
+  // Adapter creates separate snapshots per fee type, so each entity has only
+  // its own fee field (unlockFeeAmount XOR timeFeeAmount XOR currentPrice).
   pricings: [
     { apiKey: 'id',              dbKey: 'pricing_plan_id'   },
-    // base pricing
+    // base pricing (each entity snapshot contains only one of these two)
     { apiKey: 'unlockFeeAmount', dbKey: 'amt',               transform: div100,         note: '÷100' },
     { apiKey: 'timeFeeAmount',   dbKey: 'amt',               transform: div100,         note: '÷100' },
     { apiKey: 'currency',        dbKey: 'currency',          transform: currencySymbol, note: '$→AUD, NZ$→NZD' },
@@ -54,9 +62,10 @@ export const ENTITY_FIELD_MAPPINGS: Record<string, FieldMapping> = {
     { apiKey: 'currentPrice',    dbKey: 'amt',               transform: div100,         note: '÷100' },
     { apiKey: 'minutePrice',     dbKey: 'discounted_amount', transform: div100,         note: '÷100' },
     { apiKey: 'currencyName',    dbKey: 'currency'          },
+    { apiKey: 'validDay',        dbKey: 'descriptions',      transform: validDayToDesc, note: 'Valid for N day(s)' },
   ],
 
-  // Placeholder until docked adapter is built
+  // Placeholder — Ario does not support docked; update when a real adapter exists
   docked: [
     { apiKey: 'id',       dbKey: 'station_id'   },
     { apiKey: 'name',     dbKey: 'station_name' },

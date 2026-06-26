@@ -85,14 +85,19 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
   private async fetchPricings(lat: number, lon: number, account: ArioAccount, city: string): Promise<ScraperEntity[]> {
     const results: ScraperEntity[] = []
 
-    // Base pricing: unlock fee + per-minute cost
+    // Base pricing: unlock fee + per-minute cost.
+    // Separate snapshots so each entity only has its own fee field — avoids
+    // the unlock entity showing timeFeeAmount (and vice versa) in the diff view.
     const priceData = await this.post('/app/api/pay/pricelist', { latitude: lat, longitude: lon }, account)
-    const inner = (priceData?.data ?? priceData) as Record<string, unknown>
-    if (inner && typeof inner === 'object') {
-      if (inner.unlockFeeAmount != null)
-        results.push({ id: uuidv5(`ario_unlock_${city}`), ...inner })
-      if (inner.timeFeeAmount != null)
-        results.push({ id: uuidv5(`ario_per_minute_${city}`), ...inner })
+    const raw = (priceData?.data ?? priceData) as Record<string, unknown>
+    if (raw && typeof raw === 'object') {
+      const { unlockFeeAmount, timeFeeAmount, ...sharedFields } = raw as Record<string, unknown> & {
+        unlockFeeAmount?: unknown; timeFeeAmount?: unknown
+      }
+      if (unlockFeeAmount != null)
+        results.push({ id: uuidv5(`ario_unlock_${city}`), unlockFeeAmount, ...sharedFields })
+      if (timeFeeAmount != null)
+        results.push({ id: uuidv5(`ario_per_minute_${city}`), timeFeeAmount, ...sharedFields })
     }
 
     // Ride passes
@@ -117,13 +122,18 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
     const results: ScraperEntity[] = []
     for (const oa of oaList as Record<string, unknown>[]) {
       const areaId = String(oa.area_id ?? '')
+      // Spread only metadata fields — exclude coordinate lists (huge arrays that
+      // clutter the diff view and are already captured in `geometry`).
+      const oaMeta = Object.fromEntries(
+        Object.entries(oa).filter(([k]) => !k.endsWith('_coordinate_list')),
+      )
       for (const [key, raw] of Object.entries(oa)) {
         if (!key.endsWith('_coordinate_list')) continue
         const rawType = key.slice(0, -'_coordinate_list'.length)
         const areaType = ZONE_TYPE_LABELS[rawType] ?? rawType
         const polygons = this.extractPolygons(raw)
         polygons.forEach((poly, idx) => {
-          results.push({ id: `${areaId}-${areaType}-${idx}`, geometry: poly, ...oa })
+          results.push({ id: `${areaId}-${areaType}-${idx}`, geometry: poly, ...oaMeta })
         })
       }
     }

@@ -55,8 +55,10 @@ function DbCell({ dbKey, value, present }: { dbKey: string; value: unknown; pres
 
 function DiffTable({ api, db, entityType }: { api: Obj; db: Obj; entityType: string }) {
   const mapping = ENTITY_FIELD_MAPPINGS[entityType] ?? []
-  // Only show rows where at least one side is present in this snapshot
-  const visibleRows = mapping.filter(({ apiKey, dbKey }) => apiKey in api || dbKey in db)
+  // Only show rows where the API side is present — avoids phantom rows when
+  // a mapping entry doesn't apply to this entity subtype (e.g. timeFeeAmount
+  // for the unlock entity).
+  const visibleRows = mapping.filter(({ apiKey }) => apiKey in api)
   const mappedApiKeys = new Set(mapping.map((m) => m.apiKey))
   const unmappedApiKeys = Object.keys(api).filter((k) => !mappedApiKeys.has(k))
 
