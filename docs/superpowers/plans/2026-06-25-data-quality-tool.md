@@ -1,6 +1,6 @@
 # Data Quality Tool — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Побудувати внутрішній веб-інструмент (Next.js) для перевірки коректності даних скраперів: API→DB check, delta check між сесіями, AI-порівняння об'єктів, трендовий дашборд.
 
@@ -98,7 +98,7 @@
 - Create: `.env.local` (gitignored)
 - Create: `.gitignore` (доповнити)
 
-- [ ] **Крок 1: Ініціалізувати Next.js проєкт**
+- [x] **Крок 1: Ініціалізувати Next.js проєкт**
 
 ```bash
 npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --no-git
@@ -106,7 +106,7 @@ npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --
 
 Очікуваний результат: папка `src/app/`, файли `tsconfig.json`, `tailwind.config.ts`.
 
-- [ ] **Крок 2: Увімкнути strict TypeScript**
+- [x] **Крок 2: Увімкнути strict TypeScript**
 
 У `tsconfig.json` переконатись що є:
 ```json
@@ -118,14 +118,14 @@ npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --
 }
 ```
 
-- [ ] **Крок 3: Встановити базові залежності**
+- [x] **Крок 3: Встановити базові залежності**
 
 ```bash
 npm install prisma @prisma/client pg openai
 npm install --save-dev @types/pg vitest @vitejs/plugin-react @testing-library/react @testing-library/dom jsdom
 ```
 
-- [ ] **Крок 4: Створити `docker-compose.yml`**
+- [x] **Крок 4: Створити `docker-compose.yml`**
 
 ```yaml
 version: '3.8'
@@ -150,7 +150,7 @@ volumes:
   postgres_data:
 ```
 
-- [ ] **Крок 5: Створити `.env.example`**
+- [x] **Крок 5: Створити `.env.example`**
 
 ```env
 # Quality DB (Docker)
@@ -165,18 +165,18 @@ AI_AUTH_TOKEN="sk-..."
 AI_MODEL="minimax/MiniMax-M3"
 ```
 
-- [ ] **Крок 6: Створити `.env.local`** з реальними значеннями (не комітити).
+- [x] **Крок 6: Створити `.env.local`** з реальними значеннями (не комітити).
 
   > ⏳ **Заповнити пізніше:** `SCRAPERS_DATABASE_URL` — перед Task 3 (External DB Client). `AI_AUTH_TOKEN` — перед Task 8 (AI Evaluation Engine). Зараз `.env.local` містить placeholder-значення.
 
-- [ ] **Крок 7: Переконатись що `.env.local` в `.gitignore`**
+- [x] **Крок 7: Переконатись що `.env.local` в `.gitignore`**
 
 ```
 .env.local
 .env*.local
 ```
 
-- [ ] **Крок 8: Запустити Docker і перевірити підключення**
+- [x] **Крок 8: Запустити Docker і перевірити підключення**
 
 ```bash
 docker compose up -d
@@ -184,7 +184,7 @@ docker compose ps
 # очікуємо: postgres running (healthy)
 ```
 
-- [ ] **Крок 9: Налаштувати Vitest**
+- [x] **Крок 9: Налаштувати Vitest**
 
 Створити `vitest.config.ts`:
 ```typescript
@@ -214,7 +214,7 @@ export default defineConfig({
 }
 ```
 
-- [ ] **Крок 10: Commit**
+- [x] **Крок 10: Commit**
 
 ```bash
 git add -A
@@ -231,13 +231,13 @@ git commit -m "feat: project setup with Next.js, Docker, Vitest"
 **Produces:**
 - Prisma Client з моделями: `Scraper`, `CheckSession`, `PolygonCheck`, `EntityCheckSummary`, `SessionDeltaCheck`, `AiComparison`, `AlertThreshold`, `AutoCheckConfig`
 
-- [ ] **Крок 1: Ініціалізувати Prisma**
+- [x] **Крок 1: Ініціалізувати Prisma**
 
 ```bash
 npx prisma init --datasource-provider postgresql
 ```
 
-- [ ] **Крок 2: Записати схему в `prisma/schema.prisma`**
+- [x] **Крок 2: Записати схему в `prisma/schema.prisma`**
 
 ```prisma
 generator client {
@@ -359,7 +359,7 @@ model AutoCheckConfig {
 }
 ```
 
-- [ ] **Крок 3: Запустити міграцію**
+- [x] **Крок 3: Запустити міграцію**
 
 ```bash
 npx prisma migrate dev --name init
@@ -367,7 +367,7 @@ npx prisma migrate dev --name init
 
 Очікуваний результат: `prisma/migrations/*/migration.sql` створено, таблиці в БД.
 
-- [ ] **Крок 4: Перевірити схему через Prisma Studio**
+- [x] **Крок 4: Перевірити схему через Prisma Studio**
 
 ```bash
 npx prisma studio
@@ -375,7 +375,7 @@ npx prisma studio
 
 Відкрити `http://localhost:5555`, переконатись що всі таблиці є.
 
-- [ ] **Крок 5: Створити `src/lib/quality-db.ts`**
+- [x] **Крок 5: Створити `src/lib/quality-db.ts`**
 
 ```typescript
 import { PrismaClient } from '@prisma/client'
@@ -389,7 +389,7 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 ```
 
-- [ ] **Крок 6: Commit**
+- [x] **Крок 6: Commit**
 
 ```bash
 git add prisma/ src/lib/quality-db.ts
@@ -410,7 +410,7 @@ git commit -m "feat: quality_db schema and Prisma client"
 
 **⚠️ Примітка:** конкретні запити в цьому модулі — прототип. Реальна схема `scrapers_db` має бути підтверджена з командою розробників скраперів перед Task 9 (Delta Check).
 
-- [ ] **Крок 1: Написати failing тест**
+- [x] **Крок 1: Написати failing тест**
 
 Створити `tests/lib/scrapers-db.test.ts`:
 ```typescript
@@ -427,7 +427,7 @@ describe('countEntitiesForSession', () => {
 })
 ```
 
-- [ ] **Крок 2: Запустити тест, переконатись що падає**
+- [x] **Крок 2: Запустити тест, переконатись що падає**
 
 ```bash
 npm test tests/lib/scrapers-db.test.ts
@@ -435,7 +435,7 @@ npm test tests/lib/scrapers-db.test.ts
 
 Очікуваний результат: FAIL (модуль не існує).
 
-- [ ] **Крок 3: Реалізувати `src/lib/scrapers-db.ts`**
+- [x] **Крок 3: Реалізувати `src/lib/scrapers-db.ts`**
 
 ```typescript
 import { Pool } from 'pg'
@@ -499,13 +499,13 @@ export async function findEntitiesByIds(
 }
 ```
 
-- [ ] **Крок 4: Запустити тест, переконатись що проходить**
+- [x] **Крок 4: Запустити тест, переконатись що проходить**
 
 ```bash
 npm test tests/lib/scrapers-db.test.ts
 ```
 
-- [ ] **Крок 5: Commit**
+- [x] **Крок 5: Commit**
 
 ```bash
 git add src/lib/scrapers-db.ts tests/lib/scrapers-db.test.ts
@@ -562,7 +562,7 @@ SESSION RESULTS PAGE (/sessions/[id]):
   [Manual review: entity picker → side-by-side JSON]
 ```
 
-- [ ] **Крок 1: Встановити та ініціалізувати Shadcn/UI**
+- [x] **Крок 1: Встановити та ініціалізувати Shadcn/UI**
 
 ```bash
 npx shadcn@latest init
@@ -573,32 +573,32 @@ npx shadcn@latest init
 - Base color: `Zinc`
 - CSS variables: `Yes`
 
-- [ ] **Крок 2: Встановити необхідні Shadcn компоненти**
+- [x] **Крок 2: Встановити необхідні Shadcn компоненти**
 
 ```bash
 npx shadcn@latest add button card table tabs badge select checkbox input label tooltip
 ```
 
-- [ ] **Крок 3: Встановити Recharts**
+- [x] **Крок 3: Встановити Recharts**
 
 ```bash
 npm install recharts
 ```
 
-- [ ] **Крок 4: Встановити lucide-react (іконки)**
+- [x] **Крок 4: Встановити lucide-react (іконки)**
 
 ```bash
 npm install lucide-react
 ```
 
-- [ ] **Крок 5: Перевірити що Shadcn компоненти доступні**
+- [x] **Крок 5: Перевірити що Shadcn компоненти доступні**
 
 ```bash
 ls src/components/ui/
 # має бути: button.tsx, card.tsx, table.tsx, tabs.tsx, badge.tsx, select.tsx, ...
 ```
 
-- [ ] **Крок 6: Commit**
+- [x] **Крок 6: Commit**
 
 ```bash
 git add src/components/ui/ src/app/globals.css components.json
@@ -616,7 +616,7 @@ git commit -m "feat: design system — Shadcn/UI new-york zinc theme"
 
 **Produces:** `AppShell` — wrapper з sidebar навігацією для всіх сторінок.
 
-- [ ] **Крок 1: Створити `src/components/layout/Sidebar.tsx`**
+- [x] **Крок 1: Створити `src/components/layout/Sidebar.tsx`**
 
 ```tsx
 'use client'
@@ -655,7 +655,7 @@ export function Sidebar() {
 }
 ```
 
-- [ ] **Крок 2: Створити `src/components/layout/AppShell.tsx`**
+- [x] **Крок 2: Створити `src/components/layout/AppShell.tsx`**
 
 ```tsx
 import { Sidebar } from './Sidebar'
@@ -670,7 +670,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 ```
 
-- [ ] **Крок 3: Оновити `src/app/layout.tsx`**
+- [x] **Крок 3: Оновити `src/app/layout.tsx`**
 
 ```tsx
 import type { Metadata } from 'next'
@@ -696,7 +696,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-- [ ] **Крок 4: Запустити dev-сервер і перевірити навігацію**
+- [x] **Крок 4: Запустити dev-сервер і перевірити навігацію**
 
 ```bash
 npm run dev
@@ -705,7 +705,7 @@ npm run dev
 Відкрити `http://localhost:3000` — має відображатись sidebar з трьома пунктами.
 Переконатись що навігація між `/`, `/sessions/new`, `/config` працює без помилок.
 
-- [ ] **Крок 5: Commit**
+- [x] **Крок 5: Commit**
 
 ```bash
 git add src/app/layout.tsx src/components/layout/
@@ -721,7 +721,7 @@ git commit -m "feat: app shell and sidebar navigation"
 
 **Produces:** Всі shared TypeScript типи для використання в check engine та UI.
 
-- [ ] **Крок 1: Створити `src/types/index.ts`**
+- [x] **Крок 1: Створити `src/types/index.ts`**
 
 ```typescript
 export type EntityType = 'dockless' | 'docked' | 'pricings' | 'zones'
@@ -786,7 +786,7 @@ export interface CheckSessionInput {
 }
 ```
 
-- [ ] **Крок 2: Commit**
+- [x] **Крок 2: Commit**
 
 ```bash
 git add src/types/index.ts
@@ -804,7 +804,7 @@ git commit -m "feat: shared TypeScript types"
 
 **⚠️ Примітка:** `scrapersQuery` для отримання списку скраперів — прототип. Реальний запит залежить від схеми `scrapers_db`. Після узгодження схеми — оновити `syncScrapers`.
 
-- [ ] **Крок 1: Реалізувати GET /api/scrapers**
+- [x] **Крок 1: Реалізувати GET /api/scrapers**
 
 Створити `src/app/api/scrapers/route.ts`:
 ```typescript
@@ -820,7 +820,7 @@ export async function GET() {
 }
 ```
 
-- [ ] **Крок 2: Реалізувати POST /api/scrapers/sync**
+- [x] **Крок 2: Реалізувати POST /api/scrapers/sync**
 
 Створити `src/app/api/scrapers/sync/route.ts`:
 ```typescript
@@ -868,7 +868,7 @@ export async function POST() {
 }
 ```
 
-- [ ] **Крок 3: Перевірити ендпоінти вручну (якщо scrapers_db недоступна — синк поверне помилку, це нормально)**
+- [x] **Крок 3: Перевірити ендпоінти вручну (якщо scrapers_db недоступна — синк поверне помилку, це нормально)**
 
 ```bash
 curl http://localhost:3000/api/scrapers
@@ -879,7 +879,7 @@ curl -X POST http://localhost:3000/api/scrapers/sync
 # якщо налаштована: {"synced": N}
 ```
 
-- [ ] **Крок 4: Commit**
+- [x] **Крок 4: Commit**
 
 ```bash
 git add src/app/api/scrapers/
@@ -898,7 +898,7 @@ git commit -m "feat: scraper registry API with sync endpoint"
 **Produces:**
 - `compareEntities(api: Record<string, unknown>, db: Record<string, unknown>, entityType: EntityType)` → `{ verdict: AiVerdict, explanation: string }`
 
-- [ ] **Крок 1: Написати failing тести**
+- [x] **Крок 1: Написати failing тести**
 
 Створити `tests/lib/ai/compare.test.ts`:
 ```typescript
@@ -948,13 +948,13 @@ describe('compareEntities', () => {
 })
 ```
 
-- [ ] **Крок 2: Запустити тести — переконатись що падають**
+- [x] **Крок 2: Запустити тести — переконатись що падають**
 
 ```bash
 npm test tests/lib/ai/compare.test.ts
 ```
 
-- [ ] **Крок 3: Реалізувати `src/lib/ai/client.ts`**
+- [x] **Крок 3: Реалізувати `src/lib/ai/client.ts`**
 
 ```typescript
 import OpenAI from 'openai'
@@ -965,7 +965,7 @@ export const aiClient = new OpenAI({
 })
 ```
 
-- [ ] **Крок 4: Реалізувати `src/lib/ai/compare.ts`**
+- [x] **Крок 4: Реалізувати `src/lib/ai/compare.ts`**
 
 ```typescript
 import { aiClient } from './client'
@@ -1026,13 +1026,13 @@ export async function compareEntities(
 }
 ```
 
-- [ ] **Крок 5: Запустити тести — переконатись що проходять**
+- [x] **Крок 5: Запустити тести — переконатись що проходять**
 
 ```bash
 npm test tests/lib/ai/compare.test.ts
 ```
 
-- [ ] **Крок 6: Commit**
+- [x] **Крок 6: Commit**
 
 ```bash
 git add src/lib/ai/ tests/lib/ai/
@@ -1053,7 +1053,7 @@ git commit -m "feat: AI evaluation engine with MiniMax-M3"
 
 **⚠️ Примітка:** Реальні адаптери (LimeAdapter, BirdAdapter, тощо) реалізуються ОКРЕМО для кожного скрапера після отримання документації API. Кожен адаптер — окремий файл `src/lib/checks/adapters/{appId}-adapter.ts`. Цей таск визначає контракт.
 
-- [ ] **Крок 1: Створити `src/lib/checks/adapters/scraper-adapter.ts`**
+- [x] **Крок 1: Створити `src/lib/checks/adapters/scraper-adapter.ts`**
 
 ```typescript
 import type { EntityType, ScraperEntity } from '@/types'
@@ -1075,7 +1075,7 @@ export type AdapterRegistry = Map<string, ScraperApiAdapter>
 export const adapterRegistry: AdapterRegistry = new Map()
 ```
 
-- [ ] **Крок 2: Створити `src/lib/checks/adapters/mock-adapter.ts`**
+- [x] **Крок 2: Створити `src/lib/checks/adapters/mock-adapter.ts`**
 
 ```typescript
 import type { ScraperApiAdapter, PolygonBounds } from './scraper-adapter'
@@ -1096,7 +1096,7 @@ export class MockScraperApiAdapter implements ScraperApiAdapter {
 }
 ```
 
-- [ ] **Крок 3: Commit**
+- [x] **Крок 3: Commit**
 
 ```bash
 git add src/lib/checks/adapters/
@@ -1114,7 +1114,7 @@ git commit -m "feat: scraper API adapter interface and mock"
 **Produces:**
 - `runApiDbCheck(sessionInput, adapter, entityType)` → `ApiDbCheckResult`
 
-- [ ] **Крок 1: Написати failing тести**
+- [x] **Крок 1: Написати failing тести**
 
 Створити `tests/lib/checks/api-db-check.test.ts`:
 ```typescript
@@ -1166,13 +1166,13 @@ describe('runApiDbCheck', () => {
 })
 ```
 
-- [ ] **Крок 2: Запустити тести — переконатись що падають**
+- [x] **Крок 2: Запустити тести — переконатись що падають**
 
 ```bash
 npm test tests/lib/checks/api-db-check.test.ts
 ```
 
-- [ ] **Крок 3: Реалізувати `src/lib/checks/api-db-check.ts`**
+- [x] **Крок 3: Реалізувати `src/lib/checks/api-db-check.ts`**
 
 ```typescript
 import { findEntitiesByIds } from '@/lib/scrapers-db'
@@ -1220,7 +1220,7 @@ export async function runApiDbCheck(
 }
 ```
 
-- [ ] **Крок 4: Запустити тести**
+- [x] **Крок 4: Запустити тести**
 
 ```bash
 npm test tests/lib/checks/api-db-check.test.ts
@@ -1228,7 +1228,7 @@ npm test tests/lib/checks/api-db-check.test.ts
 
 Очікуваний результат: обидва тести PASS.
 
-- [ ] **Крок 5: Commit**
+- [x] **Крок 5: Commit**
 
 ```bash
 git add src/lib/checks/api-db-check.ts tests/lib/checks/api-db-check.test.ts
@@ -1247,7 +1247,7 @@ git commit -m "feat: API→DB check engine with deduplication"
 - `runDeltaCheck(appId, currentSessionId, previousSessionId, entityType, thresholds?)` → `DeltaCheckResult`
 - `calculateDeltaFlag(deltaPercent, thresholds)` → `DeltaFlag`
 
-- [ ] **Крок 1: Написати failing тести**
+- [x] **Крок 1: Написати failing тести**
 
 Створити `tests/lib/checks/delta-check.test.ts`:
 ```typescript
@@ -1294,13 +1294,13 @@ describe('runDeltaCheck', () => {
 })
 ```
 
-- [ ] **Крок 2: Запустити тести — переконатись що падають**
+- [x] **Крок 2: Запустити тести — переконатись що падають**
 
 ```bash
 npm test tests/lib/checks/delta-check.test.ts
 ```
 
-- [ ] **Крок 3: Реалізувати `src/lib/checks/delta-check.ts`**
+- [x] **Крок 3: Реалізувати `src/lib/checks/delta-check.ts`**
 
 ```typescript
 import { countEntitiesForSession } from '@/lib/scrapers-db'
@@ -1348,7 +1348,7 @@ export async function runDeltaCheck(
 }
 ```
 
-- [ ] **Крок 4: Запустити тести**
+- [x] **Крок 4: Запустити тести**
 
 ```bash
 npm test tests/lib/checks/delta-check.test.ts
@@ -1356,7 +1356,7 @@ npm test tests/lib/checks/delta-check.test.ts
 
 Очікуваний результат: всі тести PASS.
 
-- [ ] **Крок 5: Commit**
+- [x] **Крок 5: Commit**
 
 ```bash
 git add src/lib/checks/delta-check.ts tests/lib/checks/delta-check.test.ts
@@ -1378,7 +1378,7 @@ git commit -m "feat: delta check engine with configurable thresholds"
 - `GET /api/sessions` — список сесій
 - `GET /api/sessions/[id]` — деталі сесії з усіма результатами
 
-- [ ] **Крок 1: Реалізувати `src/lib/checks/orchestrator.ts`**
+- [x] **Крок 1: Реалізувати `src/lib/checks/orchestrator.ts`**
 
 ```typescript
 import { prisma } from '@/lib/quality-db'
@@ -1509,7 +1509,7 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
 }
 ```
 
-- [ ] **Крок 2: Реалізувати `src/app/api/checks/route.ts`**
+- [x] **Крок 2: Реалізувати `src/app/api/checks/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -1527,7 +1527,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Крок 3: Реалізувати `src/app/api/sessions/route.ts`**
+- [x] **Крок 3: Реалізувати `src/app/api/sessions/route.ts`**
 
 ```typescript
 import { NextResponse } from 'next/server'
@@ -1546,7 +1546,7 @@ export async function GET() {
 }
 ```
 
-- [ ] **Крок 4: Реалізувати `src/app/api/sessions/[id]/route.ts`**
+- [x] **Крок 4: Реалізувати `src/app/api/sessions/[id]/route.ts`**
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -1567,7 +1567,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 ```
 
-- [ ] **Крок 5: Реалізувати `src/app/api/entities/[id]/route.ts`** (використовується в ManualReviewPanel)
+- [x] **Крок 5: Реалізувати `src/app/api/entities/[id]/route.ts`** (використовується в ManualReviewPanel)
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
@@ -1586,7 +1586,7 @@ export async function GET(
 }
 ```
 
-- [ ] **Крок 6: Commit**
+- [x] **Крок 6: Commit**
 
 ```bash
 git add src/lib/checks/orchestrator.ts src/app/api/checks/ src/app/api/sessions/ src/app/api/entities/
@@ -1601,7 +1601,7 @@ git commit -m "feat: check orchestrator, session API routes, entity lookup"
 - Create: `src/components/sessions/CheckForm.tsx`
 - Create: `src/app/sessions/new/page.tsx`
 
-- [ ] **Крок 1: Реалізувати `src/components/sessions/CheckForm.tsx`**
+- [x] **Крок 1: Реалізувати `src/components/sessions/CheckForm.tsx`**
 
 ```tsx
 'use client'
@@ -1782,7 +1782,7 @@ export function CheckForm() {
 }
 ```
 
-- [ ] **Крок 2: Створити `src/app/sessions/new/page.tsx`**
+- [x] **Крок 2: Створити `src/app/sessions/new/page.tsx`**
 
 ```tsx
 import { CheckForm } from '@/components/sessions/CheckForm'
@@ -1797,7 +1797,7 @@ export default function NewSessionPage() {
 }
 ```
 
-- [ ] **Крок 3: Перевірити форму в браузері**
+- [x] **Крок 3: Перевірити форму в браузері**
 
 ```bash
 npm run dev
@@ -1809,7 +1809,7 @@ npm run dev
 - Entity types disabled поки не обрано scraper
 - Delta поле з'являється тільки якщо Delta увімкнено
 
-- [ ] **Крок 4: Commit**
+- [x] **Крок 4: Commit**
 
 ```bash
 git add src/components/sessions/CheckForm.tsx src/app/sessions/new/
@@ -1828,7 +1828,7 @@ git commit -m "feat: check session form UI"
 - Create: `src/components/sessions/ManualReviewPanel.tsx`
 - Create: `src/app/sessions/[id]/page.tsx`
 
-- [ ] **Крок 1: Реалізувати `src/components/sessions/ApiDbResultsTab.tsx`**
+- [x] **Крок 1: Реалізувати `src/components/sessions/ApiDbResultsTab.tsx`**
 
 ```tsx
 import { Badge } from '@/components/ui/badge'
@@ -1870,7 +1870,7 @@ export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
 }
 ```
 
-- [ ] **Крок 2: Реалізувати `src/components/sessions/DeltaResultsTab.tsx`**
+- [x] **Крок 2: Реалізувати `src/components/sessions/DeltaResultsTab.tsx`**
 
 ```tsx
 import { Badge } from '@/components/ui/badge'
@@ -1907,7 +1907,7 @@ export function DeltaResultsTab({ deltaCheck }: Props) {
 }
 ```
 
-- [ ] **Крок 3: Реалізувати `src/components/sessions/AiResultsTab.tsx`**
+- [x] **Крок 3: Реалізувати `src/components/sessions/AiResultsTab.tsx`**
 
 ```tsx
 import { Badge } from '@/components/ui/badge'
@@ -1944,7 +1944,7 @@ export function AiResultsTab({ comparisons }: Props) {
 }
 ```
 
-- [ ] **Крок 4: Реалізувати `src/components/sessions/ManualReviewPanel.tsx`**
+- [x] **Крок 4: Реалізувати `src/components/sessions/ManualReviewPanel.tsx`**
 
 ```tsx
 'use client'
@@ -1995,7 +1995,7 @@ export function ManualReviewPanel({ polygonChecks }: Props) {
 }
 ```
 
-- [ ] **Крок 5: Реалізувати `src/components/sessions/SessionResultsTabs.tsx`**
+- [x] **Крок 5: Реалізувати `src/components/sessions/SessionResultsTabs.tsx`**
 
 ```tsx
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -2060,7 +2060,7 @@ export function SessionResultsTabs({ session }: Props) {
 }
 ```
 
-- [ ] **Крок 6: Створити `src/app/sessions/[id]/page.tsx`**
+- [x] **Крок 6: Створити `src/app/sessions/[id]/page.tsx`**
 
 ```tsx
 import { notFound } from 'next/navigation'
@@ -2097,9 +2097,9 @@ export default async function SessionPage({ params }: { params: { id: string } }
 }
 ```
 
-- [ ] **Крок 7: Перевірити в браузері** (якщо є тестова сесія — відкрити її сторінку і перевірити tabs)
+- [x] **Крок 7: Перевірити в браузері** (якщо є тестова сесія — відкрити її сторінку і перевірити tabs)
 
-- [ ] **Крок 8: Commit**
+- [x] **Крок 8: Commit**
 
 ```bash
 git add src/components/sessions/ src/app/sessions/
@@ -2118,7 +2118,7 @@ git commit -m "feat: session results page with tabs for each entity type"
 
 **Produces:** три charти для одного скрапера, готові до вставки в Dashboard.
 
-- [ ] **Крок 1: Реалізувати `src/components/dashboard/TotalChart.tsx`**
+- [x] **Крок 1: Реалізувати `src/components/dashboard/TotalChart.tsx`**
 
 ```tsx
 'use client'
@@ -2186,7 +2186,7 @@ export function TotalChart({ deltaChecks, dates }: Props) {
 }
 ```
 
-- [ ] **Крок 2: Реалізувати `src/components/dashboard/CompletenessChart.tsx`**
+- [x] **Крок 2: Реалізувати `src/components/dashboard/CompletenessChart.tsx`**
 
 ```tsx
 'use client'
@@ -2238,7 +2238,7 @@ export function CompletenessChart({ summaries, dates }: Props) {
 }
 ```
 
-- [ ] **Крок 3: Реалізувати `src/components/dashboard/QualityChart.tsx`**
+- [x] **Крок 3: Реалізувати `src/components/dashboard/QualityChart.tsx`**
 
 ```tsx
 'use client'
@@ -2277,7 +2277,7 @@ export function QualityChart({ aiComparisons, sessionDates }: Props) {
 }
 ```
 
-- [ ] **Крок 4: Реалізувати `src/components/dashboard/ScraperChartRow.tsx`**
+- [x] **Крок 4: Реалізувати `src/components/dashboard/ScraperChartRow.tsx`**
 
 ```tsx
 import { TotalChart } from './TotalChart'
@@ -2314,7 +2314,7 @@ export function ScraperChartRow({ sessions }: Props) {
 }
 ```
 
-- [ ] **Крок 5: Commit**
+- [x] **Крок 5: Commit**
 
 ```bash
 git add src/components/dashboard/
@@ -2330,7 +2330,7 @@ git commit -m "feat: dashboard chart components (Total, Completeness, Quality)"
 - Modify: `src/app/page.tsx`
 - Create: `src/app/api/dashboard/route.ts`
 
-- [ ] **Крок 1: Реалізувати API для дашборду**
+- [x] **Крок 1: Реалізувати API для дашборду**
 
 Створити `src/app/api/dashboard/route.ts`:
 ```typescript
@@ -2362,7 +2362,7 @@ export async function GET(req: NextRequest) {
 }
 ```
 
-- [ ] **Крок 2: Реалізувати `src/components/dashboard/ScraperTable.tsx`**
+- [x] **Крок 2: Реалізувати `src/components/dashboard/ScraperTable.tsx`**
 
 ```tsx
 'use client'
@@ -2476,7 +2476,7 @@ export function ScraperDashboard() {
 }
 ```
 
-- [ ] **Крок 3: Оновити `src/app/page.tsx`**
+- [x] **Крок 3: Оновити `src/app/page.tsx`**
 
 ```tsx
 import { ScraperDashboard } from '@/components/dashboard/ScraperTable'
@@ -2486,7 +2486,7 @@ export default function DashboardPage() {
 }
 ```
 
-- [ ] **Крок 4: Перевірити в браузері**
+- [x] **Крок 4: Перевірити в браузері**
 
 ```bash
 npm run dev
@@ -2498,7 +2498,7 @@ npm run dev
 - "Sync Scrapers" кнопка є
 - При кліку на рядок скрапера розгортаються charти
 
-- [ ] **Крок 5: Commit**
+- [x] **Крок 5: Commit**
 
 ```bash
 git add src/components/dashboard/ScraperTable.tsx src/app/page.tsx src/app/api/dashboard/
@@ -2516,7 +2516,7 @@ git commit -m "feat: dashboard page with scraper table and expandable charts"
 - Create: `src/components/config/AutoCheckConfigForm.tsx`
 - Create: `src/app/config/page.tsx`
 
-- [ ] **Крок 1: Реалізувати API для AlertThreshold**
+- [x] **Крок 1: Реалізувати API для AlertThreshold**
 
 Створити `src/app/api/config/thresholds/route.ts`:
 ```typescript
@@ -2538,7 +2538,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Крок 2: Реалізувати API для AutoCheckConfig**
+- [x] **Крок 2: Реалізувати API для AutoCheckConfig**
 
 Створити `src/app/api/config/auto-check/route.ts`:
 ```typescript
@@ -2560,7 +2560,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Крок 3: Реалізувати `src/components/config/ThresholdForm.tsx`**
+- [x] **Крок 3: Реалізувати `src/components/config/ThresholdForm.tsx`**
 
 ```tsx
 'use client'
@@ -2624,7 +2624,7 @@ export function ThresholdForm({ scrapers, onSaved }: Props) {
 }
 ```
 
-- [ ] **Крок 4: Реалізувати `src/app/config/page.tsx`**
+- [x] **Крок 4: Реалізувати `src/app/config/page.tsx`**
 
 ```tsx
 'use client'
@@ -2685,11 +2685,11 @@ export default function ConfigPage() {
 }
 ```
 
-- [ ] **Крок 5: Перевірити сторінку `/config` в браузері**
+- [x] **Крок 5: Перевірити сторінку `/config` в браузері**
 
 Переконатись що форма рендериться, можна зберегти threshold і таблиця оновлюється.
 
-- [ ] **Крок 6: Commit**
+- [x] **Крок 6: Commit**
 
 ```bash
 git add src/app/api/config/ src/components/config/ src/app/config/
