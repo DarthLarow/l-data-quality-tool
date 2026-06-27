@@ -1,12 +1,11 @@
 'use client'
 import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
-import { ChevronDown, ChevronRight } from 'lucide-react'
 import { getFieldMapping } from '@/lib/field-mappings'
 import type { AiComparison } from '@/generated/prisma/client'
 
 type Obj = Record<string, unknown>
+
+// ── Haversine ────────────────────────────────────────────────────────────────
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
@@ -17,41 +16,48 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-function rowBg(
-  dynamic: true | undefined,
-  dbKey: string,
+// ── Row type ─────────────────────────────────────────────────────────────────
+
+type RowType = 'match' | 'dynamic' | 'mismatch' | 'neutral'
+
+function getRowType(
+  dynamic:   true | undefined,
+  dbKey:     string,
   compareVal: unknown,
-  dbVal: unknown,
-  hasBoth: boolean,
-  match: boolean,
-  gpsDist: number | null,
-): string {
-  if (!hasBoth) return ''
-  if (match) return 'bg-green-500/15'
-  if (!dynamic) return 'bg-red-500/15'
+  dbVal:     unknown,
+  hasBoth:   boolean,
+  match:     boolean,
+  gpsDist:   number | null,
+): RowType {
+  if (!hasBoth) return 'neutral'
+  if (match)    return 'match'
+  if (!dynamic) return 'mismatch'
 
   if (dbKey === 'battery') {
     const a = typeof compareVal === 'number' ? compareVal : null
-    const b = typeof dbVal     === 'number' ? dbVal      : null
-    if (a == null || b == null || a < 0 || a > 100 || b < 0 || b > 100) return 'bg-red-500/15'
-    return 'bg-yellow-500/15'
+    const b = typeof dbVal      === 'number' ? dbVal      : null
+    if (a == null || b == null || a < 0 || a > 100 || b < 0 || b > 100) return 'mismatch'
+    return 'dynamic'
   }
 
   if (dbKey === 'location_lat' || dbKey === 'location_lng') {
-    if (gpsDist === null || gpsDist >= 50) return 'bg-red-500/15'
-    return 'bg-yellow-500/15'
+    if (gpsDist === null || gpsDist >= 50) return 'mismatch'
+    return 'dynamic'
   }
 
-  return 'bg-yellow-500/15'
+  return 'dynamic'
 }
 
-const verdictVariant = {
-  Same:         'default',
-  SomewhatSame: 'secondary',
-  Different:    'destructive',
-} as const
+const ROW_STYLE: Record<RowType, { bg: string; border: string }> = {
+  match:    { bg: 'rgba(63,185,80,0.07)',  border: '#3fb950'     },
+  dynamic:  { bg: 'rgba(210,153,34,0.08)', border: '#d29922'     },
+  mismatch: { bg: 'rgba(248,81,73,0.08)',  border: '#f85149'     },
+  neutral:  { bg: 'transparent',           border: 'transparent' },
+}
 
-// ─── Diff table ───────────────────────────────────────────────────────────────
+const DIFF_COLS = '1.5fr 1.1fr 1.1fr 1.5fr'
+
+// ── Diff table ───────────────────────────────────────────────────────────────
 
 function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityType: string; appId: string }) {
   const [rawOpen, setRawOpen] = useState(false)
@@ -63,9 +69,8 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
       (!onlyWhen || onlyWhen(api)),
   )
 
-  // Pre-compute GPS distance so both coordinate rows share the same colour decision
-  const latRow = visibleRows.find(r => r.dbKey === 'location_lat')
-  const lngRow = visibleRows.find(r => r.dbKey === 'location_lng')
+  const latRow = visibleRows.find((r) => r.dbKey === 'location_lat')
+  const lngRow = visibleRows.find((r) => r.dbKey === 'location_lng')
   const gpsDist: number | null = (() => {
     if (!latRow?.apiKey || !lngRow?.apiKey) return null
     const aLat = api[latRow.apiKey], aLng = api[lngRow.apiKey]
@@ -75,106 +80,120 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
     return haversineKm(aLat, aLng, dLat, dLng)
   })()
 
-  const cell  = 'px-2 py-[3px] align-top'
-  const mono  = 'font-mono text-[11px]'
-  const muted = 'text-muted-foreground'
+  const dbBorder = '1px solid rgba(255,255,255,0.1)'
 
   return (
-    <table className="w-full text-[11px] border-separate border-spacing-y-px">
-      <thead>
-        <tr>
-          <th colSpan={3} className={`${cell} text-center text-[10px] font-semibold uppercase tracking-wide ${muted} border-b border-border`}>
-            API
-          </th>
-          <th className={`${cell} text-center text-[10px] font-semibold uppercase tracking-wide ${muted} border-b border-l border-border`}>
-            DB
-          </th>
-        </tr>
-        <tr>
-          {(['Raw', 'Transform rule', 'Transformed'] as const).map((h) => (
-            <th key={h} className={`${cell} text-left text-[10px] font-medium ${muted} pb-1`}>{h}</th>
-          ))}
-          <th className={`${cell} border-l border-border`} />
-        </tr>
-      </thead>
+    <div className="overflow-hidden rounded-[7px]" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* Column headers */}
+      <div className="grid items-center gap-[8px] px-[10px] py-[7px] font-mono text-[10px] font-medium"
+        style={{ gridTemplateColumns: DIFF_COLS, background: '#0c0c0c', color: '#5e5e5e', letterSpacing: '0.04em' }}>
+        <span>RAW</span>
+        <span>RULE</span>
+        <span>TRANSFORMED</span>
+        <div style={{ paddingLeft: '12px', borderLeft: dbBorder }}>DB</div>
+      </div>
 
-      <tbody>
-        {visibleRows.map(({ apiKey, dbKey, transform, note, constant, dynamic }) => {
-          const isConst    = constant !== undefined
-          const apiPresent = apiKey !== undefined && apiKey in api
-          const rawVal     = apiPresent ? api[apiKey!] : undefined
-          const transformed = isConst ? undefined : (transform ? transform(rawVal) : rawVal)
-          const dbPresent  = dbKey in db
-          const dbVal      = db[dbKey]
+      {/* Rows */}
+      {visibleRows.map(({ apiKey, dbKey, transform, note, constant, dynamic }) => {
+        const isConst     = constant !== undefined
+        const apiPresent  = apiKey !== undefined && apiKey in api
+        const rawVal      = apiPresent ? api[apiKey!] : undefined
+        const transformed = isConst ? undefined : (transform ? transform(rawVal) : rawVal)
+        const dbPresent   = dbKey in db
+        const dbVal       = db[dbKey]
 
-          const compareVal = isConst ? constant : transformed
-          const hasBoth    = (isConst || apiPresent) && dbPresent
-          const match      = hasBoth && JSON.stringify(compareVal) === JSON.stringify(dbVal)
-          const bg         = rowBg(dynamic, dbKey, compareVal, dbVal, hasBoth, match, gpsDist)
-          const ruleText   = note ?? (!transform && !isConst ? 'copy' : '')
+        const compareVal = isConst ? constant : transformed
+        const hasBoth    = (isConst || apiPresent) && dbPresent
+        const match      = hasBoth && JSON.stringify(compareVal) === JSON.stringify(dbVal)
+        const rType      = getRowType(dynamic, dbKey, compareVal, dbVal, hasBoth, match, gpsDist)
+        const rs         = ROW_STYLE[rType]
+        const ruleText   = note ?? (!transform && !isConst ? 'copy' : '')
 
-          return (
-            <tr key={`${apiKey ?? '_const'}-${dbKey}`} className={`rounded ${bg}`}>
-              <td className={`${cell} ${mono}`}>
-                {isConst
-                  ? <span className={muted}>-</span>
-                  : <><span className="text-blue-400">"{apiKey}"</span><span className={muted}>: </span><span>{JSON.stringify(rawVal)}</span></>}
-              </td>
-              <td className={`${cell} ${muted} whitespace-nowrap`}>{ruleText}</td>
-              <td className={`${cell} ${mono}`}>
-                {!isConst && apiPresent ? JSON.stringify(transformed) : ''}
-              </td>
-              <td className={`${cell} ${mono} border-l border-border`}>
-                {dbPresent
-                  ? <><span className="text-purple-400">"{dbKey}"</span><span className={muted}>: </span><span>{JSON.stringify(dbVal)}</span></>
-                  : <span className="text-muted-foreground/30">—</span>}
-              </td>
-            </tr>
-          )
-        })}
+        return (
+          <div
+            key={`${apiKey ?? '_const'}-${dbKey}`}
+            className="grid items-start gap-[8px] px-[10px] py-[5px] font-mono text-[11px]"
+            style={{
+              gridTemplateColumns: DIFF_COLS,
+              background:   rs.bg,
+              borderLeft:   `2px solid ${rs.border}`,
+              borderBottom: '1px solid rgba(255,255,255,0.04)',
+            }}
+          >
+            {/* API Raw */}
+            <div style={{ color: '#cfcfcf' }}>
+              {isConst
+                ? <span style={{ color: '#5e5e5e' }}>—</span>
+                : <>
+                    <span style={{ color: '#5a8ab0' }}>&quot;{apiKey}&quot;</span>
+                    <span style={{ color: '#5e5e5e' }}>: </span>
+                    <span>{JSON.stringify(rawVal)}</span>
+                  </>}
+            </div>
 
-        {/* Raw API entity accordion */}
-        <tr>
-          <td colSpan={4} className="pt-2">
-            <button
-              className={`flex items-center gap-1 text-[11px] ${muted} hover:text-foreground transition-colors`}
-              onClick={(e) => { e.stopPropagation(); setRawOpen((o) => !o) }}
-            >
-              {rawOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-              Raw API entity
-            </button>
-          </td>
-        </tr>
+            {/* Rule */}
+            <div style={{ color: '#8a8a8a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {ruleText}
+            </div>
+
+            {/* Transformed */}
+            <div style={{ color: '#bdbdbd' }}>
+              {!isConst && apiPresent ? JSON.stringify(transformed) : ''}
+            </div>
+
+            {/* DB */}
+            <div style={{ paddingLeft: '12px', borderLeft: dbBorder, color: rType === 'mismatch' ? '#f4a59f' : '#cfcfcf' }}>
+              {dbPresent
+                ? <>
+                    <span style={{ color: '#7a5a9a' }}>&quot;{dbKey}&quot;</span>
+                    <span style={{ color: '#5e5e5e' }}>: </span>
+                    <span>{JSON.stringify(dbVal)}</span>
+                  </>
+                : <span style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>}
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Raw API accordion */}
+      <div className="px-[10px] py-[7px]" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button
+          className="flex items-center gap-[6px] font-mono text-[11px] transition-colors hover:text-[#bdbdbd]"
+          style={{ color: '#6b6b6b', cursor: 'pointer', background: 'none', border: 'none' }}
+          onClick={(e) => { e.stopPropagation(); setRawOpen((o) => !o) }}
+        >
+          <span style={{ transform: rawOpen ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>▶</span>
+          Raw API entity
+        </button>
         {rawOpen && (
-          <tr>
-            <td colSpan={4} className="px-1 pb-1">
-              <pre className="rounded bg-background/60 p-2 text-[10px] font-mono overflow-auto max-h-52">
-                {JSON.stringify(api, null, 2)}
-              </pre>
-            </td>
-          </tr>
+          <pre className="mt-[6px] max-h-52 overflow-auto rounded-[5px] p-[8px] font-mono text-[10px]"
+            style={{ background: 'rgba(255,255,255,0.03)', color: '#bdbdbd' }}>
+            {JSON.stringify(api, null, 2)}
+          </pre>
         )}
-      </tbody>
-    </table>
-  )
-}
-
-// ─── Expanded detail ──────────────────────────────────────────────────────────
-
-function ComparisonDetail({ c, appId }: { c: AiComparison; appId: string }) {
-  const api = (c.apiSnapshot ?? {}) as Obj
-  const db  = (c.dbSnapshot  ?? {}) as Obj
-
-  return (
-    <div className="mt-3 border-t pt-3">
-      <div className="rounded-md bg-muted p-2 overflow-auto">
-        <DiffTable api={api} db={db} entityType={c.entityType} appId={appId} />
       </div>
     </div>
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ── Verdict badge ─────────────────────────────────────────────────────────────
+
+function VerdictBadge({ verdict }: { verdict: string }) {
+  const STYLES: Record<string, { color: string; bg: string }> = {
+    Same:         { color: '#3fb950', bg: 'rgba(63,185,80,0.13)'  },
+    SomewhatSame: { color: '#d29922', bg: 'rgba(210,153,34,0.13)' },
+    Different:    { color: '#f85149', bg: 'rgba(248,81,73,0.13)'  },
+  }
+  const s = STYLES[verdict] ?? { color: '#9a9a9a', bg: 'rgba(255,255,255,0.07)' }
+  return (
+    <span className="shrink-0 rounded-[5px] px-[7px] py-[2px] font-mono text-[11px] font-medium"
+      style={{ color: s.color, background: s.bg }}>
+      {verdict}
+    </span>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 interface Props { comparisons: AiComparison[]; appId: string }
 
@@ -182,53 +201,60 @@ export function AiResultsTab({ comparisons, appId }: Props) {
   const [openId, setOpenId] = useState<string | null>(null)
 
   if (comparisons.length === 0) {
-    return <p className="text-sm text-muted-foreground">No AI comparisons for this entity type.</p>
+    return (
+      <p className="text-[12px]" style={{ color: '#6b6b6b' }}>
+        No AI comparisons for this entity type.
+      </p>
+    )
   }
 
-  const counts = comparisons.reduce(
-    (acc, c) => { acc[c.verdict] = (acc[c.verdict] ?? 0) + 1; return acc },
-    {} as Record<string, number>,
-  )
-
   return (
-    <div className="space-y-3">
-      <div className="flex gap-3 text-sm text-muted-foreground">
-        <span>{comparisons.length} compared</span>
-        {Object.entries(counts).map(([v, n]) => (
-          <Badge key={v} variant={verdictVariant[v as keyof typeof verdictVariant] ?? 'outline'}>
-            {n} {v}
-          </Badge>
-        ))}
-      </div>
+    <div className="flex flex-col gap-[6px]">
+      {comparisons.map((c) => {
+        const isOpen = openId === c.id
+        const api    = (c.apiSnapshot ?? {}) as Obj
+        const db     = (c.dbSnapshot  ?? {}) as Obj
 
-      <div className="space-y-2">
-        {comparisons.map((c) => {
-          const isOpen = openId === c.id
-          return (
-            <Card
-              key={c.id}
-              className="cursor-pointer select-none"
-              onClick={() => setOpenId(isOpen ? null : c.id)}
-            >
-              <CardContent className="py-3">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 text-muted-foreground shrink-0">
-                    {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                  </span>
-                  <Badge variant={verdictVariant[c.verdict as keyof typeof verdictVariant] ?? 'outline'}>
-                    {c.verdict}
-                  </Badge>
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs text-muted-foreground truncate">{c.entityId}</p>
-                    <p className="text-sm mt-0.5">{c.explanation}</p>
-                  </div>
+        return (
+          <div
+            key={c.id}
+            className="overflow-hidden rounded-[8px] cursor-pointer select-none"
+            style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.08)' }}
+            onClick={() => setOpenId(isOpen ? null : c.id)}
+          >
+            {/* Header row */}
+            <div className="flex items-center gap-[10px] px-[14px] py-[11px]">
+              <span
+                className="shrink-0 text-[10px] transition-transform"
+                style={{
+                  color:     '#6b6b6b',
+                  transform: isOpen ? 'rotate(90deg)' : 'none',
+                  display:   'inline-block',
+                }}>
+                ▶
+              </span>
+              <VerdictBadge verdict={c.verdict} />
+              <span className="shrink-0 font-mono text-[12px]" style={{ color: '#cfcfcf' }}>
+                {c.entityId}
+              </span>
+              <span className="min-w-0 truncate text-[12px]" style={{ color: '#8a8a8a' }}>
+                {c.explanation}
+              </span>
+            </div>
+
+            {/* Expanded diff table */}
+            {isOpen && (
+              <div className="px-[14px] pb-[14px]"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
+                onClick={(e) => e.stopPropagation()}>
+                <div className="pt-[12px]">
+                  <DiffTable api={api} db={db} entityType={c.entityType} appId={appId} />
                 </div>
-                {isOpen && <ComparisonDetail c={c} appId={appId} />}
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

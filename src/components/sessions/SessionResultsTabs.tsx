@@ -1,6 +1,5 @@
 import { ApiDbResultsTab } from './ApiDbResultsTab'
-import { AiResultsTab } from './AiResultsTab'
-import { Badge } from '@/components/ui/badge'
+import { AiResultsTab }    from './AiResultsTab'
 import type {
   CheckSession, EntityCheckSummary, PolygonCheck,
   SessionDeltaCheck, AiComparison,
@@ -17,182 +16,228 @@ interface Props { session: SessionWithResults }
 
 const ENTITY_ORDER = ['dockless', 'docked', 'pricings', 'zones'] as const
 
-const VERDICT_STYLE = {
-  Same:         'text-[var(--status-ok)]',
-  SomewhatSame: 'text-[var(--status-warning)]',
-  Different:    'text-[var(--status-critical)]',
-} as const
+function pctColor(p: number) {
+  return p >= 98 ? '#3fb950' : p >= 94 ? '#d29922' : '#f85149'
+}
 
 export function SessionResultsTabs({ session }: Props) {
-  const checks  = new Set(session.checksEnabled)
+  const checks   = new Set(session.checksEnabled)
   const sections = ENTITY_ORDER.filter((et) => session.entityTypes.includes(et))
 
   const showApiDb = checks.has('api_db')
   const showAi    = checks.has('ai') || checks.has('api_db')
 
-  const aiByVerdict = session.aiComparisons.reduce<Record<string, number>>((acc, c) => {
-    acc[c.verdict] = (acc[c.verdict] ?? 0) + 1
-    return acc
-  }, {})
+  const hasSummaryData =
+    (showApiDb && session.entityCheckSummaries.length > 0) ||
+    (showAi    && session.aiComparisons.length > 0)
 
   return (
-    <div>
-      {/* ── Session summary ──────────────────────────────────────────────── */}
-      <div className="mb-4 flex flex-wrap gap-8 rounded-lg border bg-muted/30 px-5 py-4">
-        {showApiDb && session.entityCheckSummaries.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              API → DB
-            </p>
-            <table className="text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border/30">
-                  <th className="pb-1 pr-5 text-left text-[10px] font-medium text-muted-foreground">Entity</th>
-                  <th className="pb-1 pr-4 text-right text-[10px] font-medium text-muted-foreground">Checked</th>
-                  <th className="pb-1 pr-4 text-right text-[10px] font-medium text-muted-foreground">Found</th>
-                  <th className="pb-1 pr-4 text-right text-[10px] font-medium text-muted-foreground">Missing</th>
-                  <th className="pb-1 text-right text-[10px] font-medium text-muted-foreground">Coverage</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/20">
-                {sections.map((et) => {
-                  const s = session.entityCheckSummaries.find((x) => x.entityType === et)
-                  if (!s || s.totalUniqueInApi === 0) return null
-                  const pct = Math.round((s.totalFoundInDb / s.totalUniqueInApi) * 100)
-                  return (
-                    <tr key={et}>
-                      <td className="py-1 pr-5 text-xs capitalize text-muted-foreground">{et}</td>
-                      <td className="py-1 pr-4 text-right tabular-nums">{s.totalUniqueInApi}</td>
-                      <td className="py-1 pr-4 text-right tabular-nums text-[var(--status-ok)]">{s.totalFoundInDb}</td>
-                      <td className="py-1 pr-4 text-right tabular-nums">
-                        {s.totalNotFoundInDb > 0
-                          ? <span className="text-[var(--status-critical)]">{s.totalNotFoundInDb}</span>
-                          : <span className="text-muted-foreground/40">—</span>}
-                      </td>
-                      <td className="py-1 text-right">
-                        <span className={`font-mono text-xs ${s.totalNotFoundInDb === 0 ? 'text-[var(--status-ok)]' : 'text-[var(--status-critical)]'}`}>
+    <div className="flex flex-col">
+      {/* ── Summary card ─────────────────────────────────────────── */}
+      {hasSummaryData && (
+        <div className="mx-[22px] my-[18px] overflow-hidden rounded-[10px]"
+          style={{
+            border:              '1px solid rgba(255,255,255,0.08)',
+            display:             'grid',
+            gridTemplateColumns: showApiDb && showAi && session.aiComparisons.length > 0 ? '1fr 1fr' : '1fr',
+          }}>
+
+          {/* API → DB panel */}
+          {showApiDb && session.entityCheckSummaries.length > 0 && (
+            <div className="p-[16px_18px]"
+              style={{ borderRight: showAi && session.aiComparisons.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+              <div className="mb-[12px] font-mono text-[11px] font-semibold"
+                style={{ color: '#8a8a8a', letterSpacing: '0.06em' }}>
+                API → DB
+              </div>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {['ENTITY', 'CHECKED', 'FOUND', 'MISS', 'COV'].map((h) => (
+                      <th key={h}
+                        className={`pb-[8px] font-mono text-[10px] font-medium ${h !== 'ENTITY' ? 'text-right' : 'text-left'}`}
+                        style={{ color: '#5e5e5e', letterSpacing: '0.04em' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sections.map((et) => {
+                    const s = session.entityCheckSummaries.find((x) => x.entityType === et)
+                    if (!s || s.totalUniqueInApi === 0) return null
+                    const pct = Math.round((s.totalFoundInDb / s.totalUniqueInApi) * 100)
+                    return (
+                      <tr key={et} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: '#bdbdbd' }}>{et}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#ededed' }}>{s.totalUniqueInApi}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#3fb950' }}>{s.totalFoundInDb}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]"
+                          style={{ color: s.totalNotFoundInDb > 0 ? '#f85149' : '#5e5e5e' }}>
+                          {s.totalNotFoundInDb > 0 ? `(−${s.totalNotFoundInDb})` : '—'}
+                        </td>
+                        <td className="py-[5px] text-right font-mono text-[12px] font-medium"
+                          style={{ color: pctColor(pct) }}>
                           {pct}%
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-        {showAi && session.aiComparisons.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              AI Comparison
-            </p>
-            <table className="text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border/30">
-                  <th className="pb-1 pr-5 text-left text-[10px] font-medium text-muted-foreground">Entity</th>
-                  <th className="pb-1 pr-4 text-right text-[10px] font-medium text-muted-foreground">Same</th>
-                  <th className="pb-1 pr-4 text-right text-[10px] font-medium text-muted-foreground">Somewhat</th>
-                  <th className="pb-1 text-right text-[10px] font-medium text-muted-foreground">Different</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/20">
-                {sections.map((et) => {
-                  const cts = session.aiComparisons.filter((a) => a.entityType === et)
-                  if (cts.length === 0) return null
-                  const counts = cts.reduce<Record<string, number>>((acc, c) => {
-                    acc[c.verdict] = (acc[c.verdict] ?? 0) + 1; return acc
-                  }, {})
-                  const dash = <span className="text-muted-foreground/40">—</span>
-                  return (
-                    <tr key={et}>
-                      <td className="py-1 pr-5 text-xs capitalize text-muted-foreground">{et}</td>
-                      <td className="py-1 pr-4 text-right tabular-nums">
-                        {counts.Same ? <span className={VERDICT_STYLE.Same}>{counts.Same}</span> : dash}
-                      </td>
-                      <td className="py-1 pr-4 text-right tabular-nums">
-                        {counts.SomewhatSame ? <span className={VERDICT_STYLE.SomewhatSame}>{counts.SomewhatSame}</span> : dash}
-                      </td>
-                      <td className="py-1 text-right tabular-nums">
-                        {counts.Different ? <span className={VERDICT_STYLE.Different}>{counts.Different}</span> : dash}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+          {/* AI Comparison panel */}
+          {showAi && session.aiComparisons.length > 0 && (
+            <div className="p-[16px_18px]">
+              <div className="mb-[12px] font-mono text-[11px] font-semibold"
+                style={{ color: '#8a8a8a', letterSpacing: '0.06em' }}>
+                AI COMPARISON
+              </div>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {['ENTITY', 'SAME', 'SOMEWHAT', 'DIFF'].map((h) => (
+                      <th key={h}
+                        className={`pb-[8px] font-mono text-[10px] font-medium ${h !== 'ENTITY' ? 'text-right' : 'text-left'}`}
+                        style={{ color: '#5e5e5e', letterSpacing: '0.04em' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sections.map((et) => {
+                    const cts = session.aiComparisons.filter((a) => a.entityType === et)
+                    if (cts.length === 0) return null
+                    const cnt = cts.reduce<Record<string, number>>((acc, c) => {
+                      acc[c.verdict] = (acc[c.verdict] ?? 0) + 1; return acc
+                    }, {})
+                    const dash = <span style={{ color: '#5e5e5e' }}>—</span>
+                    return (
+                      <tr key={et} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: '#bdbdbd' }}>{et}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#3fb950' }}>
+                          {cnt.Same ?? dash}
+                        </td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#d29922' }}>
+                          {cnt.SomewhatSame ?? dash}
+                        </td>
+                        <td className="py-[5px] text-right font-mono text-[12px]" style={{ color: '#f85149' }}>
+                          {cnt.Different ?? dash}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* ── Sticky section nav ───────────────────────────────────────────── */}
-      {/* -top-6 compensates for main's p-6 padding so the nav sticks flush  */}
-      {/* to the visual top of the scroll container, not 24px below it.      */}
-      <nav className="sticky -top-6 z-10 -mx-6 mb-6 flex items-center gap-1 border-b bg-background px-6 py-2">
+      {/* ── Sticky nav pills ─────────────────────────────────────── */}
+      <nav className="sticky top-0 z-10 flex flex-wrap items-center gap-[8px] px-[22px] py-[12px]"
+        style={{ background: '#0a0a0a', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         {sections.map((et) => {
-          const summary  = session.entityCheckSummaries.find((s) => s.entityType === et)
-          const aiCount  = session.aiComparisons.filter((a) => a.entityType === et).length
-          const missCount = summary?.totalNotFoundInDb ?? 0
+          const summary = session.entityCheckSummaries.find((s) => s.entityType === et)
+          const aiCount = session.aiComparisons.filter((a) => a.entityType === et).length
           const pct = summary && summary.totalUniqueInApi > 0
             ? Math.round((summary.totalFoundInDb / summary.totalUniqueInApi) * 100)
             : null
+          const dot  = pct === null ? 'rgba(255,255,255,0.2)' : pctColor(pct)
+          const ptxt = pct === null ? '#6b6b6b'               : pctColor(pct)
 
           return (
             <a
               key={et}
               href={`#section-${et}`}
-              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm capitalize transition-colors hover:bg-muted"
+              className="flex items-center gap-[7px] rounded-[8px] px-[11px] py-[7px] text-[12.5px] font-medium no-underline transition-colors"
+              style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.1)', color: '#cfcfcf' }}
             >
-              <span>{et}</span>
+              <span className="shrink-0 rounded-full"
+                style={{ width: '7px', height: '7px', background: dot }} />
+              <span className="capitalize">{et}</span>
               {pct !== null && (
-                <span className={`font-mono text-[11px] ${missCount > 0 ? 'text-[var(--status-critical)]' : 'text-[var(--status-ok)]'}`}>
-                  {pct}%
-                </span>
+                <span className="font-mono text-[11px]" style={{ color: ptxt }}>{pct}%</span>
               )}
               {aiCount > 0 && (
-                <span className="text-[11px] text-muted-foreground">·{aiCount} AI</span>
+                <span className="font-mono text-[11px]" style={{ color: '#6b6b6b' }}>· {aiCount} AI</span>
               )}
             </a>
           )
         })}
       </nav>
 
-      {/* ── Entity sections ──────────────────────────────────────────────── */}
-      <div className="divide-y divide-border">
+      {/* ── Entity sections ──────────────────────────────────────── */}
+      <div className="flex flex-col gap-[14px] px-[22px] py-[18px]">
         {sections.map((et) => {
           const summary       = session.entityCheckSummaries.find((s) => s.entityType === et)
           const polygonChecks = session.polygonChecks.filter((p) => p.entityType === et)
           const aiComparisons = session.aiComparisons.filter((a) => a.entityType === et)
+          const aiDiff        = aiComparisons.filter((a) => a.verdict === 'Different').length
+
+          const pct = summary && summary.totalUniqueInApi > 0
+            ? Math.round((summary.totalFoundInDb / summary.totalUniqueInApi) * 100)
+            : null
 
           return (
             <section
               key={et}
               id={`section-${et}`}
-              className="scroll-mt-10 py-8 first:pt-2 last:pb-0"
+              className="overflow-hidden rounded-[10px] scroll-mt-[60px]"
+              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)' }}
             >
-              <h2 className="mb-5 text-base font-semibold capitalize">{et}</h2>
-
-              <div className="space-y-6">
-                {showApiDb && (
-                  <div>
-                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      API → DB
-                    </h3>
-                    {summary
-                      ? <ApiDbResultsTab summary={summary} polygonChecks={polygonChecks} />
-                      : <p className="text-sm text-muted-foreground">No data</p>}
-                  </div>
+              {/* Section header */}
+              <div className="flex items-center gap-[10px] px-[18px] py-[14px]"
+                style={{ background: '#101010', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <span className="text-[14px] font-semibold capitalize">{et}</span>
+                {pct !== null && (
+                  <span className="font-mono text-[13px] font-medium" style={{ color: pctColor(pct) }}>
+                    {pct}%
+                  </span>
                 )}
-
-                {showAi && (
-                  <div>
-                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      AI Comparison
-                    </h3>
-                    <AiResultsTab comparisons={aiComparisons} appId={session.appId} />
-                  </div>
+                {aiComparisons.length > 0 && (
+                  <span className="font-mono text-[12px]" style={{ color: '#6b6b6b' }}>
+                    · {aiComparisons.length} AI
+                  </span>
+                )}
+                {aiDiff > 0 && (
+                  <span className="text-[12px]" style={{ color: '#f85149' }}>
+                    + {aiDiff} different
+                  </span>
                 )}
               </div>
+
+              {/* API → DB sub-section */}
+              {showApiDb && (
+                <div className="px-[18px] py-[14px]"
+                  style={{
+                    borderBottom: showAi && aiComparisons.length > 0
+                      ? '1px solid rgba(255,255,255,0.07)'
+                      : 'none',
+                  }}>
+                  <div className="mb-[10px] font-mono text-[10.5px] font-medium"
+                    style={{ color: '#6b6b6b', letterSpacing: '0.04em' }}>
+                    API → DB
+                  </div>
+                  {summary
+                    ? <ApiDbResultsTab summary={summary} polygonChecks={polygonChecks} />
+                    : <p className="text-[12px]" style={{ color: '#6b6b6b' }}>No data</p>}
+                </div>
+              )}
+
+              {/* AI sub-section */}
+              {showAi && aiComparisons.length > 0 && (
+                <div className="px-[18px] py-[14px]">
+                  <div className="mb-[10px] font-mono text-[10.5px] font-medium"
+                    style={{ color: '#6b6b6b', letterSpacing: '0.04em' }}>
+                    AI COMPARISON
+                  </div>
+                  <AiResultsTab comparisons={aiComparisons} appId={session.appId} />
+                </div>
+              )}
             </section>
           )
         })}
