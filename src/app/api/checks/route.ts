@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
     const sessionId = await runCheckSession(input)
     return NextResponse.json({ sessionId })
   } catch (error) {
+    console.error('[POST /api/checks]', error)
     return NextResponse.json({ error: String(error) }, { status: 500 })
   }
 }

@@ -2,7 +2,7 @@ import { prisma } from '@/lib/quality-db'
 import { runApiDbCheck } from './api-db-check'
 import { runDeltaCheck } from './delta-check'
 import { compareEntities } from '@/lib/ai/compare'
-import { findEntitiesByIds } from '@/lib/scrapers-db'
+import { findEntitiesByIds, pingScrapersDb } from '@/lib/scrapers-db'
 import { adapterRegistry } from './adapters/scraper-adapter'
 import type { CheckSessionInput, EntityType } from '@/types'
 
@@ -11,6 +11,12 @@ function sampleRandom<T>(arr: T[], n: number): T[] {
 }
 
 export async function runCheckSession(input: CheckSessionInput): Promise<string> {
+  try {
+    await pingScrapersDb()
+  } catch {
+    throw new Error('scrapers_db is not reachable — activate port-forward first (npm run scrapers-db:stage or :prod)')
+  }
+
   const session = await prisma.checkSession.create({
     data: {
       environment:       input.environment,

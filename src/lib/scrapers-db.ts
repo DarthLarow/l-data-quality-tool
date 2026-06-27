@@ -16,6 +16,11 @@ function getPool(): Pool {
   return pool
 }
 
+export async function pingScrapersDb(): Promise<void> {
+  const client = await getPool().connect()
+  client.release()
+}
+
 export async function scrapersQuery<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   const client = await getPool().connect()
   try {
