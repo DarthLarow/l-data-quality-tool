@@ -84,54 +84,52 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* ── Core surfaces (from design) ─────────────────────────── */
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --card: #0f0f0f;
+  --card-foreground: #ededed;
+  --popover: #111111;
+  --popover-foreground: #ededed;
+  --primary: #ededed;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #cfcfcf;
+  --muted: #141414;
+  --muted-foreground: #6b6b6b;
+  --accent: #1a1a1a;
+  --accent-foreground: #ededed;
+  --destructive: #f85149;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: rgba(255, 255, 255, 0.2);
+  /* ── Chart colors mapped to status semantics ─────────────── */
+  --chart-1: #3fb950;
+  --chart-2: #4493f8;
+  --chart-3: #d29922;
+  --chart-4: #f85149;
+  --chart-5: #a371f7;
+  /* ── Sidebar ─────────────────────────────────────────────── */
+  --sidebar: #0c0c0c;
+  --sidebar-foreground: #ededed;
+  --sidebar-primary: #ededed;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: rgba(255, 255, 255, 0.07);
+  --sidebar-accent-foreground: #ededed;
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-ring: rgba(255, 255, 255, 0.2);
 }
 
-/* Semantic status colors for ok/warning/critical */
+/* Semantic status colors — exact hex from design */
 :root {
-  --status-ok: oklch(0.527 0.154 154.448);          /* emerald-600 */
-  --status-ok-bg: oklch(0.962 0.044 156.743);        /* emerald-50 */
-  --status-warning: oklch(0.769 0.188 70.08);        /* amber-500 */
-  --status-warning-bg: oklch(0.987 0.026 102.212);   /* amber-50 */
-  --status-critical: oklch(0.585 0.237 25.331);      /* rose-600 */
-  --status-critical-bg: oklch(0.969 0.015 12.422);   /* rose-50 */
-
-  /* Override chart colors with meaningful palette for trend charts */
-  --chart-1: oklch(0.527 0.154 154.448);             /* emerald — completeness */
-  --chart-2: oklch(0.488 0.243 264.376);             /* blue — total count */
-  --chart-3: oklch(0.769 0.188 70.08);               /* amber — warning */
-  --chart-4: oklch(0.585 0.237 25.331);              /* rose — critical */
-  --chart-5: oklch(0.627 0.265 303.9);               /* violet — quality */
+  --status-ok: #3fb950;
+  --status-ok-bg: rgba(63, 185, 80, 0.12);
+  --status-warning: #d29922;
+  --status-warning-bg: rgba(210, 153, 34, 0.12);
+  --status-critical: #f85149;
+  --status-critical-bg: rgba(248, 81, 73, 0.12);
+  --status-running: #4493f8;
+  --status-running-bg: rgba(68, 147, 248, 0.12);
 }
 
 @theme inline {
@@ -141,6 +139,8 @@
   --color-status-warning-bg: var(--status-warning-bg);
   --color-status-critical: var(--status-critical);
   --color-status-critical-bg: var(--status-critical-bg);
+  --color-status-running: var(--status-running);
+  --color-status-running-bg: var(--status-running-bg);
 }
 
 @layer base {
@@ -149,6 +149,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
   }
   html {
     @apply font-sans;
@@ -156,8 +157,18 @@
   main {
     scroll-behavior: smooth;
   }
-  /* Signature: monospace for all data values */
   .data-value {
     @apply font-mono tabular-nums;
   }
+}
+
+/* ── Design animations ───────────────────────────────────────── */
+@keyframes dqpulse {
+  0%   { box-shadow: 0 0 0 0 rgba(68, 147, 248, 0.55) }
+  70%  { box-shadow: 0 0 0 6px rgba(68, 147, 248, 0) }
+  100% { box-shadow: 0 0 0 0 rgba(68, 147, 248, 0) }
+}
+@keyframes dqshimmer {
+  0%   { transform: translateX(-100%) }
+  100% { transform: translateX(320%) }
 }
