@@ -99,6 +99,10 @@ model AlertThreshold {
   entityType           String
   warningThresholdPct  Float  @default(20)
   criticalThresholdPct Float  @default(50)
+  missingCountWarning  Int?
+  missingCountCritical Int?
+  mismatchCountWarning Int?
+  mismatchCountCritical Int?
 
   scraper Scraper @relation(fields: [appId], references: [appId], onDelete: Cascade)
 

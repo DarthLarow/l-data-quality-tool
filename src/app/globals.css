@@ -153,6 +153,9 @@
   html {
     @apply font-sans;
   }
+  main {
+    scroll-behavior: smooth;
+  }
   /* Signature: monospace for all data values */
   .data-value {
     @apply font-mono tabular-nums;

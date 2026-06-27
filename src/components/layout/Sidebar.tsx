@@ -1,18 +1,24 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Play, Settings } from 'lucide-react'
+import { LayoutDashboard, List, Play, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
 const navItems = [
   { href: '/',             label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/sessions/new', label: 'Run Check',  icon: Play },
-  { href: '/config',       label: 'Config',     icon: Settings },
+  { href: '/sessions',     label: 'Sessions',  icon: List             },
+  { href: '/sessions/new', label: 'Run Check', icon: Play             },
+  { href: '/config',       label: 'Config',    icon: Settings         },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+
+  function isActive(href: string) {
+    if (href === '/') return pathname === '/'
+    return pathname.startsWith(href)
+  }
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r bg-background px-3 py-4">
@@ -23,7 +29,7 @@ export function Sidebar() {
         {navItems.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href}>
             <Button
-              variant={pathname === href ? 'secondary' : 'ghost'}
+              variant={isActive(href) ? 'secondary' : 'ghost'}
               className={cn('w-full justify-start gap-2 text-sm')}
             >
               <Icon size={15} />
