@@ -17,15 +17,12 @@ const verdictVariant = {
 // ─── Diff table ───────────────────────────────────────────────────────────────
 
 function DiffTable({ api, db, entityType }: { api: Obj; db: Obj; entityType: string }) {
-  const mapping = ENTITY_FIELD_MAPPINGS[entityType] ?? []
+  const [rawOpen, setRawOpen] = useState(false)
 
-  // Show rows where we have an API value, or it's a DB-side constant
+  const mapping = ENTITY_FIELD_MAPPINGS[entityType] ?? []
   const visibleRows = mapping.filter(
     ({ apiKey, constant }) => constant !== undefined || (apiKey !== undefined && apiKey in api),
   )
-
-  const mappedApiKeys = new Set(mapping.map((m) => m.apiKey).filter(Boolean) as string[])
-  const unmappedKeys  = Object.keys(api).filter((k) => !mappedApiKeys.has(k))
 
   const cell  = 'px-2 py-[3px] align-top'
   const mono  = 'font-mono text-[11px]'
@@ -33,7 +30,6 @@ function DiffTable({ api, db, entityType }: { api: Obj; db: Obj; entityType: str
 
   return (
     <table className="w-full text-[11px] border-separate border-spacing-y-px">
-      {/* ── Header ── */}
       <thead>
         <tr>
           <th colSpan={3} className={`${cell} text-center text-[10px] font-semibold uppercase tracking-wide ${muted} border-b border-border`}>
@@ -53,70 +49,60 @@ function DiffTable({ api, db, entityType }: { api: Obj; db: Obj; entityType: str
 
       <tbody>
         {visibleRows.map(({ apiKey, dbKey, transform, note, constant }) => {
-          const isConst   = constant !== undefined
+          const isConst    = constant !== undefined
           const apiPresent = apiKey !== undefined && apiKey in api
-          const rawVal    = apiPresent ? api[apiKey!] : undefined
+          const rawVal     = apiPresent ? api[apiKey!] : undefined
           const transformed = isConst ? undefined : (transform ? transform(rawVal) : rawVal)
           const dbPresent  = dbKey in db
           const dbVal      = db[dbKey]
 
-          // Compare the effective "transformed or constant" value against DB
           const compareVal = isConst ? constant : transformed
           const hasBoth = (isConst || apiPresent) && dbPresent
           const match   = hasBoth && JSON.stringify(compareVal) === JSON.stringify(dbVal)
           const bg = !hasBoth ? '' : match ? 'bg-green-500/15' : 'bg-yellow-500/15'
-
           const ruleText = note ?? (!transform && !isConst ? 'copy' : '')
 
           return (
             <tr key={`${apiKey ?? '_const'}-${dbKey}`} className={`rounded ${bg}`}>
-              {/* Raw */}
               <td className={`${cell} ${mono}`}>
                 {isConst
                   ? <span className={muted}>-</span>
-                  : <><span className="text-blue-400">"{apiKey}"</span>
-                     <span className={muted}>: </span>
-                     <span>{JSON.stringify(rawVal)}</span></>}
+                  : <><span className="text-blue-400">"{apiKey}"</span><span className={muted}>: </span><span>{JSON.stringify(rawVal)}</span></>}
               </td>
-
-              {/* Transform rule */}
               <td className={`${cell} ${muted} whitespace-nowrap`}>{ruleText}</td>
-
-              {/* Transformed */}
               <td className={`${cell} ${mono}`}>
                 {!isConst && apiPresent ? JSON.stringify(transformed) : ''}
               </td>
-
-              {/* DB */}
               <td className={`${cell} ${mono} border-l border-border`}>
                 {dbPresent
-                  ? <><span className="text-purple-400">"{dbKey}"</span>
-                     <span className={muted}>: </span>
-                     <span>{JSON.stringify(dbVal)}</span></>
+                  ? <><span className="text-purple-400">"{dbKey}"</span><span className={muted}>: </span><span>{JSON.stringify(dbVal)}</span></>
                   : <span className="text-muted-foreground/30">—</span>}
               </td>
             </tr>
           )
         })}
 
-        {/* Unmapped API fields */}
-        {unmappedKeys.length > 0 && (
+        {/* Raw API entity accordion */}
+        <tr>
+          <td colSpan={4} className="pt-2">
+            <button
+              className={`flex items-center gap-1 text-[11px] ${muted} hover:text-foreground transition-colors`}
+              onClick={(e) => { e.stopPropagation(); setRawOpen((o) => !o) }}
+            >
+              {rawOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+              Raw API entity
+            </button>
+          </td>
+        </tr>
+        {rawOpen && (
           <tr>
-            <td colSpan={4} className={`pt-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wide ${muted} opacity-60`}>
-              Unique API fields
+            <td colSpan={4} className="px-1 pb-1">
+              <pre className="rounded bg-background/60 p-2 text-[10px] font-mono overflow-auto max-h-52">
+                {JSON.stringify(api, null, 2)}
+              </pre>
             </td>
           </tr>
         )}
-        {unmappedKeys.map((k) => (
-          <tr key={k}>
-            <td colSpan={3} className={`${cell} ${mono}`}>
-              <span className="text-blue-400">"{k}"</span>
-              <span className={muted}>: </span>
-              <span>{JSON.stringify(api[k])}</span>
-            </td>
-            <td className={`${cell} border-l border-border`} />
-          </tr>
-        ))}
       </tbody>
     </table>
   )
@@ -127,23 +113,9 @@ function DiffTable({ api, db, entityType }: { api: Obj; db: Obj; entityType: str
 function ComparisonDetail({ c }: { c: AiComparison }) {
   const api = (c.apiSnapshot ?? {}) as Obj
   const db  = (c.dbSnapshot  ?? {}) as Obj
-  const [rawOpen, setRawOpen] = useState(false)
 
   return (
-    <div className="mt-3 border-t pt-3 space-y-3">
-      <button
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        onClick={(e) => { e.stopPropagation(); setRawOpen((o) => !o) }}
-      >
-        {rawOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        API raw
-      </button>
-      {rawOpen && (
-        <pre className="rounded-md bg-muted p-2 text-xs font-mono overflow-auto max-h-48">
-          {JSON.stringify(api, null, 2)}
-        </pre>
-      )}
-
+    <div className="mt-3 border-t pt-3">
       <div className="rounded-md bg-muted p-2 overflow-auto">
         <DiffTable api={api} db={db} entityType={c.entityType} />
       </div>
