@@ -65,6 +65,8 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
     zones: [
       { apiKey: 'id',        dbKey: 'zone_id'                                       },
       { apiKey: 'area_name', dbKey: 'zone_name'                                      },
+      { apiKey: 'type',      dbKey: 'type'                                            },
+      { apiKey: 'type',      dbKey: 'area_type'                                       },
       { apiKey: 'area_id',   dbKey: 'area_zone_id',  transform: toStr, note: 'str()' },
       { apiKey: 'geometry',  dbKey: 'geometry_coordinates'                            },
       {                      dbKey: 'geometry_type',  constant: 'Polygon', note: 'constant "Polygon"' },

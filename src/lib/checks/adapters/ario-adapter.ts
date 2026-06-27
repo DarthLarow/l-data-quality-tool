@@ -123,7 +123,7 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
         const areaType = key.slice(0, -'_coordinate_list'.length)
         const polygons = this.extractPolygons(raw)
         polygons.forEach((poly, idx) => {
-          results.push({ id: `${areaId}-${areaType}-${idx}`, geometry: poly, ...oaMeta })
+          results.push({ id: `${areaId}-${areaType}-${idx}`, type: areaType, area_type: areaType, geometry: poly, ...oaMeta })
         })
       }
     }
