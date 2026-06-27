@@ -14,7 +14,7 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
   try {
     await pingScrapersDb()
   } catch {
-    throw new Error('scrapers_db is not reachable — activate port-forward first (npm run scrapers-db:stage or :prod)')
+    throw new Error('scrapers_db is not reachable')
   }
 
   const session = await prisma.checkSession.create({
