@@ -2,31 +2,29 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Play, List } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 interface AiVerdict { verdict: string }
 interface EntitySummary {
-  entityType: string
-  totalUniqueInApi: number
-  totalFoundInDb: number
+  entityType:        string
+  totalUniqueInApi:  number
+  totalFoundInDb:    number
   totalNotFoundInDb: number
 }
 interface Session {
-  id: string
-  createdAt: string
-  scrapersSessionId: number
-  environment: string
-  status: string
-  checksEnabled: string[]
-  entityTypes: string[]
+  id:                  string
+  createdAt:           string
+  scrapersSessionId:   number
+  environment:         string
+  status:              string
+  checksEnabled:       string[]
+  entityTypes:         string[]
   entityCheckSummaries: EntitySummary[]
-  aiComparisons: AiVerdict[]
+  aiComparisons:       AiVerdict[]
 }
 interface ScraperItem {
-  id: string
-  appId: string
-  name: string
+  id:            string
+  appId:         string
+  name:          string
   checkSessions: Session[]
 }
 
@@ -34,10 +32,10 @@ type Health = 'healthy' | 'warning' | 'critical' | 'running' | 'unknown'
 
 function computeHealth(s: Session | undefined): Health {
   if (!s) return 'unknown'
-  if (s.status === 'running')  return 'running'
-  if (s.status === 'failed')   return 'critical'
-  if (s.aiComparisons.some((c) => c.verdict === 'Different'))         return 'critical'
-  if (s.entityCheckSummaries.some((e) => e.totalNotFoundInDb > 0))   return 'warning'
+  if (s.status === 'running') return 'running'
+  if (s.status === 'failed')  return 'critical'
+  if (s.aiComparisons.some((c) => c.verdict === 'Different'))        return 'critical'
+  if (s.entityCheckSummaries.some((e) => e.totalNotFoundInDb > 0))  return 'warning'
   return 'healthy'
 }
 
@@ -51,25 +49,22 @@ function relTime(iso: string): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-const DOT: Record<Health, string> = {
-  healthy:  'bg-[var(--status-ok)]',
-  warning:  'bg-[var(--status-warning)]',
-  critical: 'bg-[var(--status-critical)]',
-  running:  'bg-blue-500 animate-pulse',
-  unknown:  'bg-muted-foreground/30',
+function pctColor(p: number) {
+  return p >= 98 ? '#3fb950' : p >= 94 ? '#d29922' : '#f85149'
 }
 
-const HEALTH_RING: Record<Health, string> = {
-  healthy:  '',
-  warning:  'border-[var(--status-warning)]/40',
-  critical: 'border-[var(--status-critical)]/40',
-  running:  'border-blue-500/30',
-  unknown:  '',
+const ACCENT: Record<Health, string> = {
+  healthy: '#3fb950',
+  warning:  '#d29922',
+  critical: '#f85149',
+  running:  '#4493f8',
+  unknown:  'rgba(255,255,255,0.12)',
 }
 
 export function ScraperGrid() {
   const [scrapers, setScrapers] = useState<ScraperItem[]>([])
-  const [loading, setLoading]   = useState(true)
+  const [loading,  setLoading]  = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     fetch('/api/dashboard')
@@ -78,123 +73,238 @@ export function ScraperGrid() {
       .catch(() => setLoading(false))
   }, [])
 
-  if (loading) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-52 animate-pulse rounded-lg border bg-muted/30" />
-        ))}
-      </div>
-    )
-  }
-
-  if (scrapers.length === 0) {
-    return (
-      <p className="py-16 text-center text-muted-foreground">
-        No active scrapers. Go to Config → Sync from scrapers_db.
-      </p>
-    )
-  }
-
-  const router = useRouter()
+  // ── Page header stats ──────────────────────────────────────────
+  const healthCounts = scrapers.reduce(
+    (acc, s) => {
+      const h = computeHealth(s.checkSessions[0])
+      acc[h] = (acc[h] ?? 0) + 1
+      return acc
+    },
+    {} as Record<Health, number>,
+  )
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {scrapers.map((scraper) => {
-        const last   = scraper.checkSessions[0]
-        const health = computeHealth(last)
-
-        const verdicts = (last?.aiComparisons ?? []).reduce<Record<string, number>>((acc, c) => {
-          acc[c.verdict] = (acc[c.verdict] ?? 0) + 1
-          return acc
-        }, {})
-
-        const envLabel = last?.environment === 'production' ? 'live' : 'stage'
-
-        return (
-          <div
-            key={scraper.id}
-            onClick={() => last && router.push(`/sessions/${last.id}`)}
-            className={`flex flex-col rounded-lg border bg-card transition-colors ${HEALTH_RING[health]} ${last ? 'cursor-pointer hover:bg-muted/20' : ''}`}
-          >
-            {/* ── Header ─────────────────────────────────────────────── */}
-            <div className="flex items-start justify-between px-4 pt-4 pb-3">
-              <div className="space-y-0.5 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 shrink-0 rounded-full ${DOT[health]}`} />
-                  <span className="font-medium truncate">{scraper.name}</span>
-                </div>
-                <span className="data-value pl-4 text-xs text-muted-foreground">{scraper.appId}</span>
-              </div>
-              {last && (
-                <div className="shrink-0 text-right text-xs text-muted-foreground">
-                  <div>{relTime(last.createdAt)}</div>
-                  <div className="data-value">
-                    <span className="rounded bg-muted px-1 py-px text-[9px] uppercase tracking-wide">{envLabel}</span>
-                    {' '}
-                    <span>#{last.scrapersSessionId}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ── Entity coverage ────────────────────────────────────── */}
-            <div className="px-4 pb-2 flex-1">
-              {last?.entityCheckSummaries.length ? (
-                <table className="w-full border-collapse text-xs">
-                  <tbody className="divide-y divide-border/20">
-                    {last.entityCheckSummaries.map((e) => {
-                      const pct = e.totalUniqueInApi > 0
-                        ? Math.round((e.totalFoundInDb / e.totalUniqueInApi) * 100)
-                        : 100
-                      return (
-                        <tr key={e.entityType}>
-                          <td className="py-0.5 capitalize text-muted-foreground">{e.entityType}</td>
-                          <td className="py-0.5 text-right tabular-nums text-muted-foreground">
-                            {e.totalFoundInDb}/{e.totalUniqueInApi}
-                          </td>
-                          <td className="py-0.5 pl-2 text-right tabular-nums font-mono">
-                            <span className={pct === 100 ? 'text-[var(--status-ok)]' : 'text-[var(--status-critical)]'}>
-                              {pct}%
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="py-2 text-xs text-muted-foreground">No sessions yet</p>
-              )}
-            </div>
-
-            {/* ── AI summary ─────────────────────────────────────────── */}
-            {Object.keys(verdicts).length > 0 && (
-              <div className="px-4 pb-3 flex flex-wrap gap-3 text-xs">
-                {verdicts.Same        && <span className="text-[var(--status-ok)]">{verdicts.Same} Same</span>}
-                {verdicts.SomewhatSame && <span className="text-[var(--status-warning)]">{verdicts.SomewhatSame} Somewhat</span>}
-                {verdicts.Different   && <span className="text-[var(--status-critical)]">{verdicts.Different} Different</span>}
-              </div>
-            )}
-
-            {/* ── Actions ────────────────────────────────────────────── */}
-            <div className="flex gap-2 border-t px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-              <Link href={`/sessions?scraper=${scraper.appId}`} className="flex-1">
-                <Button variant="outline" size="sm" className="w-full gap-1.5">
-                  <List size={12} />
-                  Sessions
-                </Button>
-              </Link>
-              <Link href={`/sessions/new?scraper=${scraper.appId}`}>
-                <Button size="sm" className="gap-1.5">
-                  <Play size={12} />
-                  Run
-                </Button>
-              </Link>
-            </div>
+    <div className="flex flex-col">
+      {/* ── Page header ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-between border-b px-[22px] py-[16px]"
+        style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        <div>
+          <div className="text-[16px] font-semibold" style={{ letterSpacing: '-0.015em' }}>
+            Scrapers
           </div>
-        )
-      })}
+          {!loading && (
+            <div className="mt-[3px] text-[12px]" style={{ color: '#8a8a8a' }}>
+              {scrapers.length} source{scrapers.length !== 1 ? 's' : ''}
+              {!!healthCounts.critical && (
+                <> · <span style={{ color: '#f85149' }}>{healthCounts.critical} critical</span></>
+              )}
+              {!!healthCounts.warning && (
+                <> · <span style={{ color: '#d29922' }}>{healthCounts.warning} warning{healthCounts.warning !== 1 ? 's' : ''}</span></>
+              )}
+              {!!healthCounts.running && (
+                <> · <span style={{ color: '#4493f8' }}>{healthCounts.running} running</span></>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-[10px]">
+          {/* Search (visual only — filter not implemented yet) */}
+          <div className="flex items-center gap-[7px] rounded-[7px] px-[11px] py-[7px] font-mono text-[12px]"
+            style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#7a7a7a', width: '160px' }}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <circle cx="5.5" cy="5.5" r="4" stroke="#6b6b6b" strokeWidth="1.4" />
+              <line x1="8.6" y1="8.6" x2="12" y2="12" stroke="#6b6b6b" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+            search…
+          </div>
+          <Link href="/sessions/new"
+            className="rounded-[7px] px-[13px] py-[8px] text-[12px] font-semibold"
+            style={{ background: '#ededed', color: '#0a0a0a' }}>
+            ＋ New Check
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Grid area ───────────────────────────────────────────── */}
+      <div className="flex-1 p-[18px_22px]" style={{ background: '#080808' }}>
+        {loading ? (
+          <div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-[158px] rounded-[9px]"
+                style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.6 }}>
+                <div className="m-[13px_15px] h-3 w-24 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              </div>
+            ))}
+          </div>
+        ) : scrapers.length === 0 ? (
+          <p className="py-16 text-center text-sm" style={{ color: '#6b6b6b' }}>
+            No active scrapers. Go to Config → Sync from scrapers_db.
+          </p>
+        ) : (
+          <div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            {scrapers.map((scraper) => {
+              const last   = scraper.checkSessions[0]
+              const health = computeHealth(last)
+              const accent = ACCENT[health]
+
+              const verdicts = (last?.aiComparisons ?? []).reduce<Record<string, number>>((acc, c) => {
+                acc[c.verdict] = (acc[c.verdict] ?? 0) + 1
+                return acc
+              }, {})
+              const hasAi = Object.keys(verdicts).length > 0
+
+              const envLive = last?.environment === 'production'
+
+              return (
+                <div
+                  key={scraper.id}
+                  onClick={() => last && router.push(`/sessions/${last.id}`)}
+                  className="flex flex-col gap-[10px] rounded-[9px] transition-colors"
+                  style={{
+                    background:   '#0f0f0f',
+                    border:       '1px solid rgba(255,255,255,0.08)',
+                    borderLeft:   `3px solid ${accent}`,
+                    padding:      '13px 15px',
+                    minHeight:    '158px',
+                    cursor:       last ? 'pointer' : 'default',
+                  }}
+                >
+                  {/* ── Card header ────────────────────────────────── */}
+                  <div className="flex items-start justify-between gap-[8px]">
+                    <div className="flex min-w-0 items-center gap-[8px]">
+                      <span
+                        className="shrink-0 rounded-full"
+                        style={{
+                          width:     '8px',
+                          height:    '8px',
+                          background: accent,
+                          animation:  health === 'running' ? 'dqpulse 1.4s ease-out infinite' : undefined,
+                        }}
+                      />
+                      <span className="truncate text-[14px] font-semibold" style={{ letterSpacing: '-0.01em' }}>
+                        {scraper.name}
+                      </span>
+                      <span className="shrink-0 font-mono text-[11px] truncate" style={{ color: '#5e5e5e' }}>
+                        {scraper.appId}
+                      </span>
+                    </div>
+                    <span className="shrink-0 font-mono text-[11px]" style={{ color: '#8a8a8a' }}>
+                      {last ? relTime(last.createdAt) : ''}
+                    </span>
+                  </div>
+
+                  {/* ── Body ───────────────────────────────────────── */}
+                  {!last ? (
+                    /* Empty state */
+                    <div className="flex flex-1 flex-col items-center justify-center gap-[9px] py-[16px]"
+                      style={{ color: '#6b6b6b' }}>
+                      <div className="text-[12px]">No sessions yet</div>
+                      <Link
+                        href={`/sessions/new?scraper=${scraper.appId}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded-[6px] px-[13px] py-[6px] text-[11px] font-semibold"
+                        style={{ border: '1px solid rgba(255,255,255,0.13)', color: '#ededed' }}
+                      >
+                        Run first check →
+                      </Link>
+                    </div>
+                  ) : last.status === 'running' ? (
+                    /* Running state */
+                    <div className="flex flex-1 flex-col justify-center gap-[9px]">
+                      <div className="flex items-center gap-[8px]">
+                        <span className="text-[11px] font-medium" style={{ color: '#4493f8' }}>Checking…</span>
+                        <span className="font-mono text-[11px]" style={{ color: '#6b6b6b' }}>
+                          #{last.scrapersSessionId}
+                        </span>
+                      </div>
+                      <div className="relative overflow-hidden rounded-[3px]"
+                        style={{ height: '5px', background: 'rgba(255,255,255,0.07)' }}>
+                        <div className="h-full rounded-[3px]" style={{ width: '40%', background: '#4493f8' }} />
+                        <div className="absolute inset-y-0 left-0 w-[40px]"
+                          style={{
+                            background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)',
+                            animation:  'dqshimmer 1.3s infinite',
+                          }} />
+                      </div>
+                      <div className="font-mono text-[11px]" style={{ color: '#6b6b6b' }}>In progress…</div>
+                    </div>
+                  ) : (
+                    /* Normal state */
+                    <>
+                      {/* Env + session */}
+                      <div className="flex items-center gap-[8px]">
+                        <span className="rounded-[4px] px-[7px] py-[1px] font-mono text-[10px] font-medium uppercase"
+                          style={{
+                            letterSpacing: '0.04em',
+                            color:      envLive ? '#3fb950' : '#d29922',
+                            background: envLive ? 'rgba(63,185,80,0.12)' : 'rgba(210,153,34,0.12)',
+                          }}>
+                          {envLive ? 'live' : 'stage'}
+                        </span>
+                        <span className="font-mono text-[11px]" style={{ color: '#8a8a8a' }}>
+                          #{last.scrapersSessionId}
+                        </span>
+                      </div>
+
+                      {/* Coverage rows */}
+                      {last.entityCheckSummaries.length > 0 && (
+                        <div className="flex flex-col">
+                          {last.entityCheckSummaries.map((e) => {
+                            const pct = e.totalUniqueInApi > 0
+                              ? Math.round((e.totalFoundInDb / e.totalUniqueInApi) * 100)
+                              : 100
+                            return (
+                              <div key={e.entityType}
+                                className="grid items-center gap-[10px] py-[4px]"
+                                style={{ gridTemplateColumns: '1fr auto 42px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                <span className="text-[12px]" style={{ color: '#bdbdbd' }}>{e.entityType}</span>
+                                <span className="text-right font-mono text-[12px]" style={{ color: '#8a8a8a' }}>
+                                  {e.totalFoundInDb}/{e.totalUniqueInApi}
+                                </span>
+                                <span className="text-right font-mono text-[12px] font-medium"
+                                  style={{ color: pctColor(pct) }}>
+                                  {pct}%
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* AI summary */}
+                      {hasAi && (
+                        <div className="flex items-center gap-[12px] pt-[1px] font-mono text-[11px]">
+                          {!!verdicts.Same        && <span style={{ color: '#3fb950' }}>● {verdicts.Same} Same</span>}
+                          {!!verdicts.SomewhatSame && <span style={{ color: '#d29922' }}>● {verdicts.SomewhatSame} ~</span>}
+                          {!!verdicts.Different   && <span style={{ color: '#f85149' }}>● {verdicts.Different} Diff</span>}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* ── Actions ────────────────────────────────────── */}
+                  {last && (
+                    <div className="mt-auto flex gap-[8px] pt-[10px]"
+                      style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                      onClick={(e) => e.stopPropagation()}>
+                      <Link href={`/sessions?scraper=${scraper.appId}`}
+                        className="flex-1 rounded-[6px] py-[6px] text-center text-[11px] font-medium"
+                        style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#bdbdbd' }}>
+                        Sessions
+                      </Link>
+                      <Link href={`/sessions/new?scraper=${scraper.appId}`}
+                        className="flex-1 rounded-[6px] py-[6px] text-center text-[11px] font-semibold"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#ededed' }}>
+                        Run →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

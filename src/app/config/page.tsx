@@ -55,7 +55,7 @@ export default function ConfigPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-6 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Config</h1>
         <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>

@@ -30,7 +30,7 @@ export default async function SessionPage({
   }[session.status] ?? ''
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="space-y-1">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold">{session.appId}</h1>
