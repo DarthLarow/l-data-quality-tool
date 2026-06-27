@@ -16,16 +16,6 @@ const GMS_CALLER_SIG   = '58e1c4133f7441ec3d2c270270a14802da47ba0e'
 const DEFAULT_GMS_VERSION = '231818044'
 const DEFAULT_LOCALE      = 'en_US'
 
-// From API_to_DB_mapping.md: sub-zone list key → DB type/area_type label
-const ZONE_TYPE_LABELS: Record<string, string> = {
-  oa:           'operating_area',
-  no_park:      'no_parking',
-  no_go:        'no_riding',
-  low_speed:    'slow_zone',
-  curfew:       'curfew',
-  no_park_pay:  'mandatory_parking',
-}
-
 const BASE_HEADERS = {
   'Accept-Encoding': 'gzip',
   'Connection':      'Keep-Alive',
@@ -129,8 +119,8 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
       )
       for (const [key, raw] of Object.entries(oa)) {
         if (!key.endsWith('_coordinate_list')) continue
-        const rawType = key.slice(0, -'_coordinate_list'.length)
-        const areaType = ZONE_TYPE_LABELS[rawType] ?? rawType
+        // Raw suffix is stored as-is in DB (oa, no_park, no_go, low_speed, curfew, no_park_pay)
+        const areaType = key.slice(0, -'_coordinate_list'.length)
         const polygons = this.extractPolygons(raw)
         polygons.forEach((poly, idx) => {
           results.push({ id: `${areaId}-${areaType}-${idx}`, geometry: poly, ...oaMeta })
