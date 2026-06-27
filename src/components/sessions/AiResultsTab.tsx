@@ -21,7 +21,9 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
 
   const mapping = getFieldMapping(appId, entityType)
   const visibleRows = mapping.filter(
-    ({ apiKey, constant }) => constant !== undefined || (apiKey !== undefined && apiKey in api),
+    ({ apiKey, constant, onlyWhen }) =>
+      (constant !== undefined || (apiKey !== undefined && apiKey in api)) &&
+      (!onlyWhen || onlyWhen(api)),
   )
 
   const cell  = 'px-2 py-[3px] align-top'

@@ -44,7 +44,8 @@ function buildFieldRulesTable(mapping: FieldMapping): string {
     const rule = r.constant !== undefined
       ? `constant "${String(r.constant)}"`
       : (r.note ?? 'copy')
-    return `| ${r.dbKey} | ${source} | ${rule} |`
+    const subtype = r.onlyWhen ? ' *(sub-type filtered)*' : ''
+    return `| ${r.dbKey} | ${source} | ${rule}${subtype} |`
   }
 
   const parts: string[] = []
@@ -67,8 +68,9 @@ function buildFieldRulesTable(mapping: FieldMapping): string {
 
 function buildComparisonTable(mapping: FieldMapping, api: Obj, db: Obj): string {
   const toRow = (r: FieldMapping[number]) => {
-    if (r.constant !== undefined) return null         // constants are always correct — skip
-    if (!r.apiKey || !(r.apiKey in api)) return null  // field absent from this snapshot
+    if (r.constant !== undefined) return null
+    if (!r.apiKey || !(r.apiKey in api)) return null
+    if (r.onlyWhen && !r.onlyWhen(api)) return null
 
     const rawVal      = api[r.apiKey]
     const transformed = r.transform ? r.transform(rawVal) : rawVal

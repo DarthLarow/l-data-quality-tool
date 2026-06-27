@@ -1,10 +1,13 @@
+type ApiSnapshot = Record<string, unknown>
+
 export type MappingRow = {
   apiKey?:    string
   dbKey:      string
   transform?: (v: unknown) => unknown
   note?:      string
   constant?:  unknown
-  dynamic?:   true   // battery, coordinates — expected to change between captures
+  dynamic?:   true              // battery, coordinates — expected to change between captures
+  onlyWhen?:  (api: ApiSnapshot) => boolean  // sub-type filter: row included only when predicate is true
 }
 
 export type FieldMapping = MappingRow[]
@@ -34,6 +37,10 @@ const validDayToDesc = (v: unknown) =>
 
 const toStr = (v: unknown) => String(v)
 
+// Pricings sub-type predicates
+const isRidePass   = (api: ApiSnapshot) => 'currentPrice' in api
+const isBasePricing = (api: ApiSnapshot) => !isRidePass(api)
+
 // Per-scraper field mapping registry.
 // Key: scrapers_db.apps.name (= quality_db.Scraper.appId).
 // Used by both the AI comparison builder and the DiffTable UI.
@@ -62,20 +69,25 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
       {                      dbKey: 'vehicle_type',   constant: 'scooter', note: 'constant "scooter"' },
     ],
 
-    // POST /app/api/pay/pricelist + /app/api/getridepassbycity → pricings
-    // Adapter creates separate snapshots per fee type (only one fee field per entity).
+    // POST /app/api/pay/pricelist  → unlock fee entity (unlockFeeAmount) + per-minute entity (timeFeeAmount)
+    // POST /app/api/getridepassbycity → ride pass entities
+    // Adapter creates one snapshot per fee type — only the relevant fee field is present.
+    // onlyWhen guards rows that exist in only one sub-type to prevent false mismatches.
     pricings: [
-      { apiKey: 'id',              dbKey: 'pricing_plan_id'                                                    },
-      { apiKey: 'id',              dbKey: 'discount_id'                                                        },
-      { apiKey: 'unlockFeeAmount', dbKey: 'amt',               transform: div100,         note: '/100'         },
-      { apiKey: 'timeFeeAmount',   dbKey: 'amt',               transform: div100,         note: '/100'         },
-      { apiKey: 'currency',        dbKey: 'currency',          transform: currencySymbol, note: '$→AUD, NZ$→NZD' },
-      { apiKey: 'ridePassName',    dbKey: 'pricing_plan_name'                                                  },
-      { apiKey: 'currentPrice',    dbKey: 'amt',               transform: div100,         note: '/100'         },
-      { apiKey: 'minutePrice',     dbKey: 'discounted_amount', transform: div100,         note: '/100'         },
-      { apiKey: 'currencyName',    dbKey: 'currency'                                                           },
-      { apiKey: 'validDay',        dbKey: 'descriptions',      transform: validDayToDesc, note: '"Valid for N day(s)"' },
-      {                            dbKey: 'vehicle_type',      constant: 'scooter',       note: 'constant "scooter"'  },
+      { apiKey: 'id',              dbKey: 'pricing_plan_id'                                                                           },
+      // discount_id = same uuid as pricing_plan_id for ride pass; NULL in DB for base pricing
+      { apiKey: 'id',              dbKey: 'discount_id',       onlyWhen: isRidePass                                                   },
+      // base pricing fields
+      { apiKey: 'unlockFeeAmount', dbKey: 'amt',               transform: div100,         note: '/100', onlyWhen: isBasePricing       },
+      { apiKey: 'timeFeeAmount',   dbKey: 'amt',               transform: div100,         note: '/100', onlyWhen: isBasePricing       },
+      { apiKey: 'currency',        dbKey: 'currency',          transform: currencySymbol, note: '$→AUD, NZ$→NZD', onlyWhen: isBasePricing },
+      // ride pass fields
+      { apiKey: 'ridePassName',    dbKey: 'pricing_plan_name',                                          onlyWhen: isRidePass          },
+      { apiKey: 'currentPrice',    dbKey: 'amt',               transform: div100,         note: '/100', onlyWhen: isRidePass          },
+      { apiKey: 'minutePrice',     dbKey: 'discounted_amount', transform: div100,         note: '/100', onlyWhen: isRidePass          },
+      { apiKey: 'currencyName',    dbKey: 'currency',                                                   onlyWhen: isRidePass          },
+      { apiKey: 'validDay',        dbKey: 'descriptions',      transform: validDayToDesc, note: '"Valid for N day(s)"', onlyWhen: isRidePass },
+      {                            dbKey: 'vehicle_type',      constant: 'scooter',       note: 'constant "scooter"'                  },
     ],
 
     // Placeholder — update when a real docked adapter exists
