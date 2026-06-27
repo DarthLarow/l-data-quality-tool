@@ -17,8 +17,7 @@ interface Props { session: SessionWithResults }
 const ENTITY_ORDER = ['dockless', 'docked', 'pricings', 'zones'] as const
 
 export function SessionResultsTabs({ session }: Props) {
-  const showApiDb = session.checksEnabled.includes('api_db')
-
+  const checks = new Set(session.checksEnabled)
   const sections = ENTITY_ORDER.filter((et) => session.entityTypes.includes(et))
 
   return (
@@ -33,7 +32,7 @@ export function SessionResultsTabs({ session }: Props) {
             <h2 className="mb-5 text-base font-semibold capitalize">{et}</h2>
 
             <div className="space-y-6">
-              {showApiDb && (
+              {checks.has('api_db') && (
                 <div>
                   <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     API → DB
@@ -44,7 +43,7 @@ export function SessionResultsTabs({ session }: Props) {
                 </div>
               )}
 
-              {showApiDb && (
+              {checks.has('api_db') && (
                 <div>
                   <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     AI Comparison
