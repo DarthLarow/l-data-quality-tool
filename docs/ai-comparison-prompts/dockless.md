@@ -21,8 +21,10 @@ Your job is to decide whether both snapshots represent the **same physical vehic
 
 ## Dynamic field thresholds
 
-- `battery`: both values must be non-null and in range 0–100; any numeric difference is acceptable
-- `location_lat` / `location_lng`: GPS drift is normal as the vehicle moves between rides; flag as anomaly only if the distance between the two coordinates exceeds **50 km** (a vehicle cannot travel further than that between typical scraper runs)
+These rules override any intuition about "large" differences. Apply them literally.
+
+- `battery`: if both values are non-null and in range 0–100, the difference is **always acceptable → Same**. Do not penalise any numeric gap.
+- `location_lat` / `location_lng`: GPS movement is **always acceptable → Same** as long as the distance between the two coordinates is under **50 km**. A vehicle moving 5 km, 10 km, or even 30 km between scraper runs is completely normal. Only exceed 50 km = anomaly.
 
 ---
 
@@ -43,6 +45,8 @@ Respond ONLY with valid JSON. No markdown, no explanation outside the JSON objec
 
 ### Verdict definitions
 
-- `Same` — all static fields match; all dynamic fields are within acceptable range
-- `SomewhatSame` — static fields match, but a dynamic field has an anomalous value (e.g. `battery` is null in one snapshot, or GPS distance exceeds 50 km)
-- `Different` — at least one static field does not match — the records likely represent different vehicles or a mapping error
+- `Same` — all static fields match AND dynamic fields pass their thresholds above (including any GPS movement under 50 km and any battery difference between 0–100)
+- `SomewhatSame` — static fields match BUT one of these specific anomalies is present: `battery` is null or out of range in one snapshot; GPS distance exceeds 50 km
+- `Different` — at least one static field does not match
+
+When in doubt between `Same` and `SomewhatSame`, choose `Same` if all thresholds are met.
