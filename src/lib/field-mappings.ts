@@ -11,6 +11,12 @@ export type FieldMapping = MappingRow[]
 const helmetStatus = (v: unknown) =>
   v === 0 ? 'absent' : v === 1 ? 'attached' : v
 
+const ARIO_VEHICLE_TYPES: Record<number, string> = { 1: 'Ario TS 1.0', 2: 'E-bike', 3: 'Ario TS 1.5' }
+const arioCategory = (v: unknown) => {
+  if (v == null) return null
+  return ARIO_VEHICLE_TYPES[v as number] ?? `type_${v}`
+}
+
 const div100 = (v: unknown) =>
   typeof v === 'number' ? v / 100 : v
 
@@ -38,8 +44,8 @@ export const ENTITY_FIELD_MAPPINGS: Record<string, FieldMapping> = {
     { apiKey: 'battery',      dbKey: 'battery'                                                                   },
     { apiKey: 'latitude',     dbKey: 'location_lat'                                                              },
     { apiKey: 'longitude',    dbKey: 'location_lng'                                                              },
-    { apiKey: 'helmetStatus', dbKey: 'helmet_status', transform: helmetStatus, note: '0→"absent", 1→"attached"' },
-    {                         dbKey: 'category',      constant: 'scooter',     note: 'constant "scooter"'       },
+    { apiKey: 'helmetStatus', dbKey: 'helmet_status', transform: helmetStatus,  note: '0→"absent", 1→"attached"'              },
+    { apiKey: 'type',         dbKey: 'category',      transform: arioCategory,  note: '1→"Ario TS 1.0", 2→"E-bike", 3→"Ario TS 1.5"' },
   ],
 
   // POST /app/api/getoutofoalist → zones
