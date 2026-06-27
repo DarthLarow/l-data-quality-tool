@@ -3,10 +3,8 @@ import { SessionsList } from '@/components/sessions/SessionsList'
 
 export default function SessionsPage() {
   return (
-    <div className="p-6">
-      <Suspense fallback={<div className="py-12 text-center text-muted-foreground text-sm">Loading sessions…</div>}>
-        <SessionsList />
-      </Suspense>
-    </div>
+    <Suspense fallback={<div className="py-12 text-center text-sm" style={{ color: '#6b6b6b' }}>Loading sessions…</div>}>
+      <SessionsList />
+    </Suspense>
   )
 }

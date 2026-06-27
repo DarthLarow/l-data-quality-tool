@@ -1,29 +1,25 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Play } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface EntitySummary {
-  entityType: string
-  totalUniqueInApi: number
-  totalFoundInDb: number
+  entityType:        string
+  totalUniqueInApi:  number
+  totalFoundInDb:    number
   totalNotFoundInDb: number
 }
 interface SessionRow {
-  id: string
-  createdAt: string
-  appId: string
-  scrapersSessionId: number
-  entityTypes: string[]
-  checksEnabled: string[]
-  status: string
-  scraper: { name: string }
+  id:                  string
+  createdAt:           string
+  appId:               string
+  scrapersSessionId:   number
+  entityTypes:         string[]
+  checksEnabled:       string[]
+  status:              string
+  scraper:             { name: string }
   entityCheckSummaries: EntitySummary[]
-  aiComparisons: { verdict: string }[]
+  aiComparisons:       { verdict: string }[]
 }
 interface ScraperOption { appId: string; name: string }
 
@@ -37,31 +33,75 @@ function relTime(iso: string): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-function coverageSummary(summaries: EntitySummary[]): { found: number; total: number } | null {
-  if (!summaries.length) return null
-  return summaries.reduce(
-    (acc, s) => ({ found: acc.found + s.totalFoundInDb, total: acc.total + s.totalUniqueInApi }),
-    { found: 0, total: 0 },
+function covSummary(s: EntitySummary[]) {
+  if (!s.length) return null
+  return s.reduce((a, r) => ({ found: a.found + r.totalFoundInDb, total: a.total + r.totalUniqueInApi }), { found: 0, total: 0 })
+}
+
+function aiSummary(c: { verdict: string }[]) {
+  return c.reduce<Record<string, number>>((a, r) => { a[r.verdict] = (a[r.verdict] ?? 0) + 1; return a }, {})
+}
+
+function dotColor(s: SessionRow) {
+  if (s.status === 'running') return '#4493f8'
+  if (s.status === 'failed')  return '#f85149'
+  const ai = aiSummary(s.aiComparisons)
+  if (ai.Different) return '#f85149'
+  const cov = covSummary(s.entityCheckSummaries)
+  if (cov && cov.found < cov.total) return '#d29922'
+  return '#3fb950'
+}
+
+function pctColor(p: number) {
+  return p >= 98 ? '#3fb950' : p >= 94 ? '#d29922' : '#f85149'
+}
+
+const COLS = '100px 110px 80px 1fr 90px 150px 130px'
+
+const STATUS_SEGMENTS = [
+  { value: 'all',       label: 'All'         },
+  { value: 'running',   label: 'In progress' },
+  { value: 'completed', label: 'Completed'   },
+  { value: 'failed',    label: 'Failed'      },
+]
+
+const DAYS_OPTIONS = [
+  { value: '7',  label: 'Last 7 days'  },
+  { value: '14', label: 'Last 14 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '0',  label: 'All time'     },
+]
+
+/* ── Pill dropdown (native select wrapped) ────────────────────── */
+function PillSelect({
+  value, onChange, options, prefix,
+}: {
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+  prefix?: string
+}) {
+  const current = options.find((o) => o.value === value)?.label ?? value
+  return (
+    <div className="relative flex items-center">
+      <div className="flex items-center gap-[7px] rounded-[7px] px-[11px] py-[6px] text-[12px] pointer-events-none select-none"
+        style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#bdbdbd', whiteSpace: 'nowrap' }}>
+        {prefix && <span>{prefix}</span>}
+        <span>{current}</span>
+        <span style={{ color: '#6b6b6b' }}>▾</span>
+      </div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 opacity-0 cursor-pointer w-full"
+        style={{ fontSize: '12px' }}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
   )
-}
-
-function aiSummary(comparisons: { verdict: string }[]) {
-  return comparisons.reduce<Record<string, number>>((acc, c) => {
-    acc[c.verdict] = (acc[c.verdict] ?? 0) + 1
-    return acc
-  }, {})
-}
-
-const STATUS_STYLE: Record<string, string> = {
-  completed: 'text-[var(--status-ok)]',
-  failed:    'text-[var(--status-critical)]',
-  running:   'text-blue-500',
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  completed: 'Completed',
-  failed:    'Failed',
-  running:   'In progress',
 }
 
 export function SessionsList() {
@@ -70,11 +110,11 @@ export function SessionsList() {
 
   const scraperParam = searchParams.get('scraper') ?? 'all'
   const statusParam  = searchParams.get('status')  ?? 'all'
-  const daysParam    = searchParams.get('days')    ?? '30'
+  const daysParam    = searchParams.get('days')    ?? '7'
 
   const [sessions, setSessions] = useState<SessionRow[]>([])
   const [scrapers, setScrapers] = useState<ScraperOption[]>([])
-  const [loading, setLoading]   = useState(true)
+  const [loading,  setLoading]  = useState(true)
 
   function setParam(key: string, value: string) {
     const p = new URLSearchParams(searchParams.toString())
@@ -83,12 +123,10 @@ export function SessionsList() {
     router.push(`/sessions?${p.toString()}`)
   }
 
-  // fetch scrapers for filter dropdown
   useEffect(() => {
     fetch('/api/scrapers').then((r) => r.json()).then((d) => setScrapers(d as ScraperOption[])).catch(() => {})
   }, [])
 
-  // fetch sessions on filter change
   useEffect(() => {
     setLoading(true)
     const p = new URLSearchParams()
@@ -101,166 +139,173 @@ export function SessionsList() {
       .catch(() => setLoading(false))
   }, [scraperParam, statusParam, daysParam])
 
+  const scraperOptions: { value: string; label: string }[] = [
+    { value: 'all', label: 'All scrapers' },
+    ...scrapers.map((s) => ({ value: s.appId, label: s.name })),
+  ]
+
   return (
-    <div className="space-y-5">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Sessions</h1>
-        <Link href="/sessions/new">
-          <Button size="sm" className="gap-1.5">
-            <Play size={13} />
-            New Check
-          </Button>
+    <div className="flex flex-col">
+      {/* ── Page header ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-between border-b px-[22px] py-[16px]"
+        style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        <div className="text-[16px] font-semibold" style={{ letterSpacing: '-0.015em' }}>Sessions</div>
+        <Link href="/sessions/new"
+          className="rounded-[7px] px-[13px] py-[8px] text-[12px] font-semibold"
+          style={{ background: '#ededed', color: '#0a0a0a' }}>
+          ＋ New Check
         </Link>
       </div>
 
-      {/* ── Filters ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-3">
-        <Select value={scraperParam} onValueChange={(v) => setParam('scraper', v)}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="All scrapers" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All scrapers</SelectItem>
-            {scrapers.map((s) => (
-              <SelectItem key={s.appId} value={s.appId}>{s.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* ── Filters bar ─────────────────────────────────────────── */}
+      <div className="flex items-center gap-[10px] border-b px-[22px] py-[13px]"
+        style={{ background: '#0b0b0b', borderColor: 'rgba(255,255,255,0.07)' }}>
+        {/* Scraper pill dropdown */}
+        <PillSelect
+          value={scraperParam}
+          onChange={(v) => setParam('scraper', v)}
+          options={scraperOptions}
+          prefix="Scraper"
+        />
 
-        <Select value={statusParam} onValueChange={(v) => setParam('status', v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="running">In progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Status segmented control */}
+        <div className="flex overflow-hidden rounded-[7px]"
+          style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+          {STATUS_SEGMENTS.map((seg, i) => (
+            <button
+              key={seg.value}
+              onClick={() => setParam('status', seg.value)}
+              className="px-[11px] py-[6px] text-[12px] transition-colors"
+              style={{
+                font:        statusParam === seg.value ? '500 12px inherit' : '400 12px inherit',
+                background:  statusParam === seg.value ? 'rgba(255,255,255,0.08)' : 'transparent',
+                color:       statusParam === seg.value ? '#ededed' : '#8a8a8a',
+                borderLeft:  i > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                cursor:      'pointer',
+                whiteSpace:  'nowrap',
+              }}
+            >
+              {seg.label}
+            </button>
+          ))}
+        </div>
 
-        <Select value={daysParam} onValueChange={(v) => setParam('days', v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="14">Last 14 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="0">All time</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Days pill dropdown — right side */}
+        <div className="ml-auto">
+          <PillSelect
+            value={daysParam}
+            onChange={(v) => setParam('days', v)}
+            options={DAYS_OPTIONS}
+          />
+        </div>
       </div>
 
-      {/* ── Table ───────────────────────────────────────────────────────── */}
-      <div className="rounded-lg border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/30">
-            <tr className="text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-4 py-3 text-left font-medium">Date</th>
-              <th className="px-4 py-3 text-left font-medium">Scraper</th>
-              <th className="px-4 py-3 text-left font-medium">Session</th>
-              <th className="px-4 py-3 text-left font-medium">Entities</th>
-              <th className="px-4 py-3 text-left font-medium">Coverage</th>
-              <th className="px-4 py-3 text-left font-medium">AI</th>
-              <th className="px-4 py-3 text-left font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {loading && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                  Loading…
-                </td>
-              </tr>
-            )}
+      {/* ── Table content ───────────────────────────────────────── */}
+      <div style={{ background: '#080808', padding: '4px 22px 18px' }}>
+        {/* Table header */}
+        <div className="grid items-center gap-[12px] border-b px-[4px] py-[11px] font-mono text-[10.5px] font-medium"
+          style={{
+            gridTemplateColumns: COLS,
+            color: '#6b6b6b',
+            letterSpacing: '0.06em',
+            borderColor: 'rgba(255,255,255,0.07)',
+          }}>
+          <span>DATE</span>
+          <span>SCRAPER</span>
+          <span>SESSION</span>
+          <span>ENTITIES</span>
+          <span className="text-right">COVERAGE</span>
+          <span>AI</span>
+          <span>STATUS</span>
+        </div>
 
-            {!loading && sessions.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                  No sessions found.
-                </td>
-              </tr>
-            )}
+        {loading && (
+          <div className="py-8 text-center text-[12px]" style={{ color: '#6b6b6b' }}>Loading…</div>
+        )}
 
-            {!loading && sessions.map((s) => {
-              const cov     = s.checksEnabled.includes('api_db') ? coverageSummary(s.entityCheckSummaries) : null
-              const ai      = (s.checksEnabled.includes('ai') || s.checksEnabled.includes('api_db'))
-                ? aiSummary(s.aiComparisons)
-                : null
-              const covPct  = cov && cov.total > 0 ? Math.round((cov.found / cov.total) * 100) : null
-              const hasMiss = cov && cov.found < cov.total
+        {!loading && sessions.length === 0 && (
+          <div className="py-8 text-center text-[12px]" style={{ color: '#6b6b6b' }}>No sessions found.</div>
+        )}
 
-              return (
-                <tr
-                  key={s.id}
-                  className="cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => router.push(`/sessions/${s.id}`)}
-                >
-                  <td className="px-4 py-3 text-muted-foreground">
-                    <span title={new Date(s.createdAt).toLocaleString()}>{relTime(s.createdAt)}</span>
-                  </td>
+        {!loading && sessions.map((s) => {
+          const cov    = covSummary(s.entityCheckSummaries)
+          const ai     = aiSummary(s.aiComparisons)
+          const pct    = cov && cov.total > 0 ? Math.round((cov.found / cov.total) * 100) : null
+          const dot    = dotColor(s)
+          const isRun  = s.status === 'running'
 
-                  <td className="px-4 py-3">
-                    <span className="data-value text-xs">{s.scraper?.name ?? s.appId}</span>
-                  </td>
+          const aiText = Object.keys(ai).length > 0
+            ? [
+                ai.Same         ? `${ai.Same}S`        : '',
+                ai.SomewhatSame ? `${ai.SomewhatSame}~` : '',
+                ai.Different    ? `${ai.Different}✗`   : '',
+              ].filter(Boolean).join(' · ')
+            : '—'
 
-                  <td className="px-4 py-3 data-value text-muted-foreground">
-                    #{s.scrapersSessionId}
-                  </td>
+          return (
+            <div
+              key={s.id}
+              className="grid cursor-pointer items-center gap-[12px] px-[4px] py-[11px]"
+              style={{
+                gridTemplateColumns: COLS,
+                fontSize:    '12.5px',
+                borderBottom: '1px solid rgba(255,255,255,0.045)',
+              }}
+              onClick={() => router.push(`/sessions/${s.id}`)}
+            >
+              {/* DATE */}
+              <span className="font-mono text-[12px]"
+                style={{ color: isRun ? '#4493f8' : '#8a8a8a' }}
+                title={new Date(s.createdAt).toLocaleString()}>
+                {relTime(s.createdAt)}
+              </span>
 
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {s.entityTypes.map((et) => (
-                        <Badge key={et} variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
-                          {et}
-                        </Badge>
-                      ))}
-                    </div>
-                  </td>
+              {/* SCRAPER */}
+              <span className="flex items-center gap-[7px] text-[12.5px] font-medium">
+                <span className="shrink-0 rounded-full"
+                  style={{ width: '7px', height: '7px', background: dot }} />
+                {s.scraper?.name ?? s.appId}
+              </span>
 
-                  <td className="px-4 py-3 data-value">
-                    {cov && covPct !== null ? (
-                      <span className={hasMiss ? 'text-[var(--status-critical)]' : 'text-[var(--status-ok)]'}>
-                        {covPct}%
-                        {hasMiss && <span className="text-muted-foreground ml-1">({cov.total - cov.found} miss)</span>}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/40">—</span>
-                    )}
-                  </td>
+              {/* SESSION */}
+              <span className="font-mono text-[12px]" style={{ color: '#bdbdbd' }}>
+                #{s.scrapersSessionId}
+              </span>
 
-                  <td className="px-4 py-3 data-value">
-                    {ai && Object.keys(ai).length > 0 ? (
-                      <span className="flex gap-2 text-xs">
-                        {ai.Same        && <span className="text-[var(--status-ok)]">{ai.Same}S</span>}
-                        {ai.SomewhatSame && <span className="text-[var(--status-warning)]">{ai.SomewhatSame}~</span>}
-                        {ai.Different   && <span className="text-[var(--status-critical)]">{ai.Different}✗</span>}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/40">—</span>
-                    )}
-                  </td>
+              {/* ENTITIES */}
+              <span className="text-[12px]" style={{ color: '#9a9a9a' }}>
+                {s.entityTypes.join(' · ')}
+              </span>
 
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-medium ${STATUS_STYLE[s.status] ?? 'text-muted-foreground'}`}>
-                      {s.status === 'running' && (
-                        <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                      )}
-                      {STATUS_LABEL[s.status] ?? s.status}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              {/* COVERAGE */}
+              <span className="text-right font-mono text-[12px] font-medium"
+                style={{ color: pct !== null ? pctColor(pct) : '#6b6b6b' }}>
+                {pct !== null ? `${pct}%` : '—'}
+              </span>
+
+              {/* AI */}
+              <span className="font-mono text-[12px]" style={{ color: '#9a9a9a' }}>
+                {aiText}
+              </span>
+
+              {/* STATUS */}
+              {isRun ? (
+                <span className="flex items-center gap-[6px] text-[12px] font-medium"
+                  style={{ color: '#4493f8' }}>
+                  <span className="rounded-full"
+                    style={{ width: '6px', height: '6px', background: '#4493f8', flexShrink: 0,
+                             animation: 'dqpulse 1.4s ease-out infinite' }} />
+                  In progress
+                </span>
+              ) : s.status === 'failed' ? (
+                <span className="text-[12px] font-medium" style={{ color: '#f85149' }}>Failed</span>
+              ) : (
+                <span className="text-[12px] font-medium" style={{ color: '#3fb950' }}>Completed</span>
+              )}
+            </div>
+          )
+        })}
       </div>
-
-      {!loading && sessions.length > 0 && (
-        <p className="text-xs text-muted-foreground text-right">{sessions.length} sessions</p>
-      )}
     </div>
   )
 }
