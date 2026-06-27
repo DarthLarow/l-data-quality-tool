@@ -27,7 +27,7 @@ const POLYGON_OPTIONS: { value: PolygonStrategy; label: string }[] = [
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-[8px] text-[11.5px] font-medium" style={{ color: '#bdbdbd' }}>
+    <div className="mb-[8px] text-[12px] font-medium" style={{ color: '#9a9a9a' }}>
       {children}
     </div>
   )

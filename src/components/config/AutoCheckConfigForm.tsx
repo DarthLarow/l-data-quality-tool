@@ -40,8 +40,8 @@ function PillToggle({ active, onClick, children, disabled }: {
 
 function FieldLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div className="mb-[7px] font-mono text-[10px] font-medium"
-      style={{ color: '#6b6b6b', letterSpacing: '0.05em', ...style }}>
+    <div className="mb-[7px] text-[12px] font-medium"
+      style={{ color: '#9a9a9a', ...style }}>
       {children}
     </div>
   )
@@ -110,7 +110,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
 
         {/* Environment */}
         <div>
-          <FieldLabel>ENVIRONMENT</FieldLabel>
+          <FieldLabel>Environment</FieldLabel>
           <div className="flex w-fit overflow-hidden rounded-[7px]"
             style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
             {(['staging', 'production'] as Environment[]).map((env, i) => (
@@ -135,7 +135,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
 
         {/* Polygon strategy */}
         <div>
-          <FieldLabel>POLYGON</FieldLabel>
+          <FieldLabel>Polygon</FieldLabel>
           <div className="flex flex-wrap gap-[6px]">
             {[
               { value: 'random',         label: 'Random'        },
@@ -182,7 +182,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
 
         {/* Entity types */}
         <div>
-          <FieldLabel>ENTITY TYPES</FieldLabel>
+          <FieldLabel>Entity Types</FieldLabel>
           <div className="flex flex-wrap gap-[6px]">
             {ENTITY_TYPES.map((et) => (
               <PillToggle
@@ -199,7 +199,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
         {/* Check types */}
         <div>
           <FieldLabel style={checksError ? { color: '#f85149' } : undefined}>
-            CHECK TYPES{checksError ? ' — enable at least one' : ''}
+            Check Types{checksError ? ' — enable at least one' : ''}
           </FieldLabel>
           <div className="flex flex-wrap gap-[6px]">
             {([
@@ -219,7 +219,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
 
         {/* AI Sample Size */}
         <div>
-          <FieldLabel>AI SAMPLE SIZE</FieldLabel>
+          <FieldLabel>AI Sample Size</FieldLabel>
           <input
             type="number"
             min={0}

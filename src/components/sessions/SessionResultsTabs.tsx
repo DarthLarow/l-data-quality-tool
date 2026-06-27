@@ -69,9 +69,9 @@ export function SessionResultsTabs({ session }: Props) {
                     const pct = Math.round((s.totalFoundInDb / s.totalUniqueInApi) * 100)
                     return (
                       <tr key={et} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: '#bdbdbd' }}>{et}</td>
-                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#ededed' }}>{s.totalUniqueInApi}</td>
-                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#3fb950' }}>{s.totalFoundInDb}</td>
+                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: '#cfcfcf' }}>{et}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#9a9a9a' }}>{s.totalUniqueInApi}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#9a9a9a' }}>{s.totalFoundInDb}</td>
                         <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]"
                           style={{ color: s.totalNotFoundInDb > 0 ? '#f85149' : '#5e5e5e' }}>
                           {s.totalNotFoundInDb > 0 ? `(−${s.totalNotFoundInDb})` : '—'}
@@ -117,7 +117,7 @@ export function SessionResultsTabs({ session }: Props) {
                     const dash = <span style={{ color: '#5e5e5e' }}>—</span>
                     return (
                       <tr key={et} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: '#bdbdbd' }}>{et}</td>
+                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: '#cfcfcf' }}>{et}</td>
                         <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#3fb950' }}>
                           {cnt.Same ?? dash}
                         </td>
@@ -218,9 +218,9 @@ export function SessionResultsTabs({ session }: Props) {
                       ? '1px solid rgba(255,255,255,0.07)'
                       : 'none',
                   }}>
-                  <div className="mb-[10px] font-mono text-[10.5px] font-medium"
-                    style={{ color: '#6b6b6b', letterSpacing: '0.04em' }}>
-                    API → DB
+                  <div className="mb-[10px] font-mono text-[10.5px] font-semibold"
+                    style={{ color: '#7a7a7a', letterSpacing: '0.06em' }}>
+                    API → DB · COMPLETENESS
                   </div>
                   {summary
                     ? <ApiDbResultsTab summary={summary} polygonChecks={polygonChecks} />
@@ -231,8 +231,8 @@ export function SessionResultsTabs({ session }: Props) {
               {/* AI sub-section */}
               {showAi && aiComparisons.length > 0 && (
                 <div className="px-[18px] py-[14px]">
-                  <div className="mb-[10px] font-mono text-[10.5px] font-medium"
-                    style={{ color: '#6b6b6b', letterSpacing: '0.04em' }}>
+                  <div className="mb-[10px] font-mono text-[10.5px] font-semibold"
+                    style={{ color: '#7a7a7a', letterSpacing: '0.06em' }}>
                     AI COMPARISON
                   </div>
                   <AiResultsTab comparisons={aiComparisons} appId={session.appId} />

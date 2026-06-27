@@ -22,22 +22,27 @@ export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
   return (
     <div>
       {/* Stats row */}
-      <div className="flex flex-wrap items-center gap-[18px] font-mono text-[12px]"
+      <div className="flex flex-wrap items-center gap-[18px] font-mono text-[13px]"
         style={{ color: '#bdbdbd' }}>
         <span>
           <span style={{ color: '#ededed' }}>{summary.totalUniqueInApi}</span>
           {' '}checked
         </span>
+        <span style={{ color: '#5e5e5e' }}>·</span>
         <span>
           <span style={{ color: '#3fb950' }}>{summary.totalFoundInDb}</span>
           {' '}found
         </span>
         {summary.totalNotFoundInDb > 0 && (
-          <span>
-            <span style={{ color: '#f85149' }}>{summary.totalNotFoundInDb}</span>
-            {' '}missing
-          </span>
+          <>
+            <span style={{ color: '#5e5e5e' }}>·</span>
+            <span>
+              <span style={{ color: '#f85149' }}>{summary.totalNotFoundInDb}</span>
+              {' '}missing
+            </span>
+          </>
         )}
+        <span style={{ color: '#5e5e5e' }}>·</span>
         <span style={{ color: pctColor(pct), fontWeight: 500 }}>{pct}%</span>
       </div>
 

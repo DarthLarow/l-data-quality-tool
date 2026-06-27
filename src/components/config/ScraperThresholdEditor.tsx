@@ -185,7 +185,7 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
             return (
               <div key={et} className="grid items-center gap-[8px] py-[4px]"
                 style={{ gridTemplateColumns: GRID, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                <div className="text-[12px] capitalize" style={{ color: '#bdbdbd' }}>{et}</div>
+                <div className="text-[12px] capitalize" style={{ color: '#cfcfcf' }}>{et}</div>
                 <NumInput value={row.missingWarn}  onChange={(v) => update(et, 'missingWarn',  v)} />
                 <NumInput value={row.missingCrit}  onChange={(v) => update(et, 'missingCrit',  v)} />
                 <NumInput value={row.mismatchWarn} onChange={(v) => update(et, 'mismatchWarn', v)} />
