@@ -1,10 +1,9 @@
 export type MappingRow = {
-  apiKey:     string
+  apiKey?:    string           // absent for constant-only DB fields
   dbKey:      string
-  // Normalize API value before comparing with DB value.
-  // If present, the transformed result is shown next to the raw value.
   transform?: (v: unknown) => unknown
-  note?:      string
+  note?:      string           // shown as Transform rule; auto-shows "copy" when absent
+  constant?:  unknown          // DB-side constant (no API source)
 }
 
 export type FieldMapping = MappingRow[]
@@ -22,50 +21,58 @@ const currencySymbol = (v: unknown) => {
 }
 
 const validDayToDesc = (v: unknown) =>
-  typeof v === 'number' ? `Valid for ${v} day(s)` : v
+  typeof v === 'number'
+    ? `Valid for ${v} day${v !== 1 ? 's' : ''}`
+    : v
 
-const toString = (v: unknown) => String(v)
+const toStr = (v: unknown) => String(v)
 
 // Sources: externalSystemDocs/ecommerce-scraper-main/docs/ario/API_to_DB_mapping.md
+//          + ario_fleet_dockless_parser.py, ario_zone_parser.py,
+//            ario_pricing_parser.py, ario_pass_pricing_parser.py
 export const ENTITY_FIELD_MAPPINGS: Record<string, FieldMapping> = {
   // POST /app/api/carlist → dockless_fleets
   dockless: [
-    { apiKey: 'carId',        dbKey: 'vehicle_id'   },
-    { apiKey: 'stickerid',    dbKey: 'name'          },
-    { apiKey: 'battery',      dbKey: 'battery'       },
-    { apiKey: 'latitude',     dbKey: 'location_lat'  },
-    { apiKey: 'longitude',    dbKey: 'location_lng'  },
-    { apiKey: 'helmetStatus', dbKey: 'helmet_status', transform: helmetStatus, note: '0→absent, 1→attached' },
+    { apiKey: 'carId',        dbKey: 'vehicle_id',    transform: toStr,        note: 'str()'                   },
+    { apiKey: 'stickerid',    dbKey: 'name'                                                                      },
+    { apiKey: 'battery',      dbKey: 'battery'                                                                   },
+    { apiKey: 'latitude',     dbKey: 'location_lat'                                                              },
+    { apiKey: 'longitude',    dbKey: 'location_lng'                                                              },
+    { apiKey: 'helmetStatus', dbKey: 'helmet_status', transform: helmetStatus, note: '0→"absent", 1→"attached"' },
+    {                         dbKey: 'category',      constant: 'scooter',     note: 'constant "scooter"'       },
   ],
 
   // POST /app/api/getoutofoalist → zones
-  // Snapshot excludes *_coordinate_list arrays (captured in `geometry`).
+  // Snapshot excludes *_coordinate_list arrays (captured in geometry).
+  // type/area_type are derived from the coordinate key — not in snapshot.
   zones: [
-    { apiKey: 'id',       dbKey: 'zone_id'          },
-    { apiKey: 'area_name', dbKey: 'zone_name'        },
-    { apiKey: 'area_id',  dbKey: 'area_zone_id',     transform: toString, note: 'str()' },
-    { apiKey: 'geometry', dbKey: 'geometry_coordinates' },
+    { apiKey: 'id',        dbKey: 'zone_id'              },
+    { apiKey: 'area_name', dbKey: 'zone_name'             },
+    { apiKey: 'area_id',   dbKey: 'area_zone_id',  transform: toStr, note: 'str()' },
+    { apiKey: 'geometry',  dbKey: 'geometry_coordinates'  },
+    {                      dbKey: 'geometry_type',  constant: 'Polygon', note: 'constant "Polygon"' },
+    {                      dbKey: 'vehicle_type',   constant: 'scooter', note: 'constant "scooter"' },
   ],
 
   // POST /app/api/pay/pricelist + /app/api/getridepassbycity → pricings
-  // Adapter creates separate snapshots per fee type, so each entity has only
-  // its own fee field (unlockFeeAmount XOR timeFeeAmount XOR currentPrice).
+  // Adapter creates separate snapshots per fee type (only one fee field per entity).
   pricings: [
-    { apiKey: 'id',              dbKey: 'pricing_plan_id'   },
-    // base pricing (each entity snapshot contains only one of these two)
-    { apiKey: 'unlockFeeAmount', dbKey: 'amt',               transform: div100,         note: '÷100' },
-    { apiKey: 'timeFeeAmount',   dbKey: 'amt',               transform: div100,         note: '÷100' },
+    { apiKey: 'id',              dbKey: 'pricing_plan_id'                                                    },
+    // base pricing (unlock entity has unlockFeeAmount; per-minute has timeFeeAmount)
+    { apiKey: 'unlockFeeAmount', dbKey: 'amt',               transform: div100,         note: '/100'         },
+    { apiKey: 'timeFeeAmount',   dbKey: 'amt',               transform: div100,         note: '/100'         },
     { apiKey: 'currency',        dbKey: 'currency',          transform: currencySymbol, note: '$→AUD, NZ$→NZD' },
     // ride pass
-    { apiKey: 'ridePassName',    dbKey: 'pricing_plan_name' },
-    { apiKey: 'ridePassId',      dbKey: 'discount_id'       },
-    { apiKey: 'currentPrice',    dbKey: 'amt',               transform: div100,         note: '÷100' },
-    { apiKey: 'minutePrice',     dbKey: 'discounted_amount', transform: div100,         note: '÷100' },
-    { apiKey: 'currencyName',    dbKey: 'currency'          },
-    { apiKey: 'validDay',        dbKey: 'descriptions',      transform: validDayToDesc, note: 'Valid for N day(s)' },
+    { apiKey: 'ridePassName',    dbKey: 'pricing_plan_name'                                                  },
+    { apiKey: 'ridePassId',      dbKey: 'discount_id'                                                        },
+    { apiKey: 'currentPrice',    dbKey: 'amt',               transform: div100,         note: '/100'         },
+    { apiKey: 'minutePrice',     dbKey: 'discounted_amount', transform: div100,         note: '/100'         },
+    { apiKey: 'currencyName',    dbKey: 'currency'                                                           },
+    { apiKey: 'validDay',        dbKey: 'descriptions',      transform: validDayToDesc, note: '"Valid for N day(s)"' },
+    {                            dbKey: 'vehicle_type',      constant: 'scooter',       note: 'constant "scooter"'  },
   ],
 
-  // Placeholder — Ario does not support docked; update when a real adapter exists
+  // Placeholder — update when a real docked adapter exists
   docked: [
     { apiKey: 'id',       dbKey: 'station_id'   },
     { apiKey: 'name',     dbKey: 'station_name' },

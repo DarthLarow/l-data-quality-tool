@@ -16,111 +16,105 @@ const verdictVariant = {
 
 // ─── Diff table ───────────────────────────────────────────────────────────────
 
-function ApiCell({ apiKey, rawVal, transformedVal, note, present }: {
-  apiKey:         string
-  rawVal:         unknown
-  transformedVal: unknown
-  note?:          string
-  present:        boolean
-}) {
-  if (!present) return <span className="text-muted-foreground/40 italic text-[11px]">—</span>
-  const hasTransform = transformedVal !== rawVal
-
-  return (
-    <span className="font-mono text-[11px] leading-relaxed">
-      <span className="text-blue-400">"{apiKey}"</span>
-      <span className="text-muted-foreground">: </span>
-      <span>{JSON.stringify(rawVal)}</span>
-      {hasTransform && (
-        <>
-          <span className="mx-1 text-muted-foreground/60">→</span>
-          <span className="text-amber-400">{JSON.stringify(transformedVal)}</span>
-          {note && <span className="ml-1 text-muted-foreground/50 text-[10px]">({note})</span>}
-        </>
-      )}
-    </span>
-  )
-}
-
-function DbCell({ dbKey, value, present }: { dbKey: string; value: unknown; present: boolean }) {
-  if (!present) return <span className="text-muted-foreground/40 italic text-[11px]">—</span>
-  return (
-    <span className="font-mono text-[11px] leading-relaxed">
-      <span className="text-purple-400">"{dbKey}"</span>
-      <span className="text-muted-foreground">: </span>
-      <span>{JSON.stringify(value)}</span>
-    </span>
-  )
-}
-
 function DiffTable({ api, db, entityType }: { api: Obj; db: Obj; entityType: string }) {
   const mapping = ENTITY_FIELD_MAPPINGS[entityType] ?? []
-  // Only show rows where the API side is present — avoids phantom rows when
-  // a mapping entry doesn't apply to this entity subtype (e.g. timeFeeAmount
-  // for the unlock entity).
-  const visibleRows = mapping.filter(({ apiKey }) => apiKey in api)
-  const mappedApiKeys = new Set(mapping.map((m) => m.apiKey))
-  const unmappedApiKeys = Object.keys(api).filter((k) => !mappedApiKeys.has(k))
+
+  // Show rows where we have an API value, or it's a DB-side constant
+  const visibleRows = mapping.filter(
+    ({ apiKey, constant }) => constant !== undefined || (apiKey !== undefined && apiKey in api),
+  )
+
+  const mappedApiKeys = new Set(mapping.map((m) => m.apiKey).filter(Boolean) as string[])
+  const unmappedKeys  = Object.keys(api).filter((k) => !mappedApiKeys.has(k))
+
+  const cell  = 'px-2 py-[3px] align-top'
+  const mono  = 'font-mono text-[11px]'
+  const muted = 'text-muted-foreground'
 
   return (
-    <table className="w-full text-[11px] border-separate border-spacing-y-0.5">
+    <table className="w-full text-[11px] border-separate border-spacing-y-px">
+      {/* ── Header ── */}
       <thead>
         <tr>
-          <td className="pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground w-[50%]">
+          <th colSpan={3} className={`${cell} text-center text-[10px] font-semibold uppercase tracking-wide ${muted} border-b border-border`}>
             API
-          </td>
-          <td className="pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground w-[50%]">
+          </th>
+          <th className={`${cell} text-center text-[10px] font-semibold uppercase tracking-wide ${muted} border-b border-l border-border`}>
             DB
-          </td>
+          </th>
+        </tr>
+        <tr>
+          {(['Raw', 'Transform rule', 'Transformed'] as const).map((h) => (
+            <th key={h} className={`${cell} text-left text-[10px] font-medium ${muted} pb-1`}>{h}</th>
+          ))}
+          <th className={`${cell} border-l border-border`} />
         </tr>
       </thead>
+
       <tbody>
-        {visibleRows.map(({ apiKey, dbKey, transform, note }) => {
-          const apiPresent = apiKey in api
+        {visibleRows.map(({ apiKey, dbKey, transform, note, constant }) => {
+          const isConst   = constant !== undefined
+          const apiPresent = apiKey !== undefined && apiKey in api
+          const rawVal    = apiPresent ? api[apiKey!] : undefined
+          const transformed = isConst ? undefined : (transform ? transform(rawVal) : rawVal)
           const dbPresent  = dbKey in db
-          const rawVal     = api[apiKey]
-          const transformed = transform ? transform(rawVal) : rawVal
           const dbVal      = db[dbKey]
 
-          const bothPresent = apiPresent && dbPresent
-          const match = bothPresent && JSON.stringify(transformed) === JSON.stringify(dbVal)
-          const bg = !bothPresent ? '' : match ? 'bg-green-500/15' : 'bg-yellow-500/15'
+          // Compare the effective "transformed or constant" value against DB
+          const compareVal = isConst ? constant : transformed
+          const hasBoth = (isConst || apiPresent) && dbPresent
+          const match   = hasBoth && JSON.stringify(compareVal) === JSON.stringify(dbVal)
+          const bg = !hasBoth ? '' : match ? 'bg-green-500/15' : 'bg-yellow-500/15'
+
+          const ruleText = note ?? (!transform && !isConst ? 'copy' : '')
 
           return (
-            <tr key={`${apiKey}-${dbKey}`} className={bg}>
-              <td className="rounded-l px-2 py-0.5 align-top">
-                <ApiCell
-                  apiKey={apiKey}
-                  rawVal={rawVal}
-                  transformedVal={transformed}
-                  note={note}
-                  present={apiPresent}
-                />
+            <tr key={`${apiKey ?? '_const'}-${dbKey}`} className={`rounded ${bg}`}>
+              {/* Raw */}
+              <td className={`${cell} ${mono}`}>
+                {isConst
+                  ? <span className={muted}>-</span>
+                  : <><span className="text-blue-400">"{apiKey}"</span>
+                     <span className={muted}>: </span>
+                     <span>{JSON.stringify(rawVal)}</span></>}
               </td>
-              <td className="rounded-r px-2 py-0.5 align-top">
-                <DbCell dbKey={dbKey} value={dbVal} present={dbPresent} />
+
+              {/* Transform rule */}
+              <td className={`${cell} ${muted} whitespace-nowrap`}>{ruleText}</td>
+
+              {/* Transformed */}
+              <td className={`${cell} ${mono}`}>
+                {!isConst && apiPresent ? JSON.stringify(transformed) : ''}
+              </td>
+
+              {/* DB */}
+              <td className={`${cell} ${mono} border-l border-border`}>
+                {dbPresent
+                  ? <><span className="text-purple-400">"{dbKey}"</span>
+                     <span className={muted}>: </span>
+                     <span>{JSON.stringify(dbVal)}</span></>
+                  : <span className="text-muted-foreground/30">—</span>}
               </td>
             </tr>
           )
         })}
 
-        {unmappedApiKeys.length > 0 && (
+        {/* Unmapped API fields */}
+        {unmappedKeys.length > 0 && (
           <tr>
-            <td colSpan={2} className="pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+            <td colSpan={4} className={`pt-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wide ${muted} opacity-60`}>
               Unique API fields
             </td>
           </tr>
         )}
-
-        {unmappedApiKeys.map((k) => (
+        {unmappedKeys.map((k) => (
           <tr key={k}>
-            <td className="px-2 py-0.5 align-top" colSpan={2}>
-              <span className="font-mono text-[11px]">
-                <span className="text-blue-400">"{k}"</span>
-                <span className="text-muted-foreground">: </span>
-                <span>{JSON.stringify(api[k])}</span>
-              </span>
+            <td colSpan={3} className={`${cell} ${mono}`}>
+              <span className="text-blue-400">"{k}"</span>
+              <span className={muted}>: </span>
+              <span>{JSON.stringify(api[k])}</span>
             </td>
+            <td className={`${cell} border-l border-border`} />
           </tr>
         ))}
       </tbody>
@@ -137,20 +131,18 @@ function ComparisonDetail({ c }: { c: AiComparison }) {
 
   return (
     <div className="mt-3 border-t pt-3 space-y-3">
-      <div>
-        <button
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          onClick={(e) => { e.stopPropagation(); setRawOpen((o) => !o) }}
-        >
-          {rawOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          API raw
-        </button>
-        {rawOpen && (
-          <pre className="mt-1.5 rounded-md bg-muted p-2 text-xs font-mono overflow-auto max-h-48">
-            {JSON.stringify(api, null, 2)}
-          </pre>
-        )}
-      </div>
+      <button
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        onClick={(e) => { e.stopPropagation(); setRawOpen((o) => !o) }}
+      >
+        {rawOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        API raw
+      </button>
+      {rawOpen && (
+        <pre className="rounded-md bg-muted p-2 text-xs font-mono overflow-auto max-h-48">
+          {JSON.stringify(api, null, 2)}
+        </pre>
+      )}
 
       <div className="rounded-md bg-muted p-2 overflow-auto">
         <DiffTable api={api} db={db} entityType={c.entityType} />
@@ -167,9 +159,7 @@ export function AiResultsTab({ comparisons }: Props) {
   const [openId, setOpenId] = useState<string | null>(null)
 
   if (comparisons.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No AI comparisons for this entity type.</p>
-    )
+    return <p className="text-sm text-muted-foreground">No AI comparisons for this entity type.</p>
   }
 
   const counts = comparisons.reduce(
