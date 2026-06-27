@@ -43,7 +43,7 @@ export function SessionResultsTabs({ session }: Props) {
                 </div>
               )}
 
-              {checks.has('api_db') && (
+              {(checks.has('ai') || checks.has('api_db')) && (
                 <div>
                   <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     AI Comparison

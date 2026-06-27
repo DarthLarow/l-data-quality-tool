@@ -1,5 +1,5 @@
 export type EntityType = 'dockless' | 'docked' | 'pricings' | 'zones'
-export type CheckType = 'api_db' | 'delta'
+export type CheckType = 'api_db' | 'ai' | 'delta'
 export type Environment = 'staging' | 'production'
 export type DeltaFlag = 'ok' | 'warning' | 'critical'
 export type AiVerdict = 'Same' | 'SomewhatSame' | 'Different'
@@ -7,7 +7,7 @@ export type PolygonStrategy = 'random' | 'by_id' | 'by_city_all' | 'by_city_rand
 export type CheckStatus = 'running' | 'completed' | 'failed'
 
 export const ENTITY_TYPES: EntityType[] = ['dockless', 'docked', 'pricings', 'zones']
-export const CHECK_TYPES: CheckType[] = ['api_db', 'delta']
+export const CHECK_TYPES: CheckType[] = ['api_db', 'ai', 'delta']
 
 export interface ScraperEntity {
   id: string

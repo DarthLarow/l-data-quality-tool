@@ -142,13 +142,17 @@ export function CheckForm() {
           <div className="space-y-1.5">
             <Label>Check Types</Label>
             <div className="flex gap-5">
-              {(['api_db', 'delta'] as CheckType[]).map((ct) => (
+              {([
+                ['api_db', 'API→DB'],
+                ['ai',     'AI Comparison'],
+                ['delta',  'Delta'],
+              ] as [CheckType, string][]).map(([ct, label]) => (
                 <label key={ct} className="flex items-center gap-2 cursor-pointer text-sm">
                   <Checkbox
                     checked={checksEnabled.includes(ct)}
                     onCheckedChange={() => toggleCheckType(ct)}
                   />
-                  {ct === 'api_db' ? 'API→DB' : 'Delta'}
+                  {label}
                 </label>
               ))}
             </div>
@@ -215,23 +219,25 @@ export function CheckForm() {
             </div>
           </div>
 
-          {/* AI sample size */}
-          <div className="space-y-1.5">
-            <Label>AI Sample Size <span className="text-muted-foreground">(max 20)</span></Label>
-            <Input
-              type="number"
-              min={0}
-              max={20}
-              value={aiSampleSize}
-              onChange={(e) => setAiSampleSize(Number(e.target.value))}
-              className="w-24 font-mono"
-            />
-            {aiSampleSize > 10 && (
-              <p className="text-xs text-amber-600">
-                Large sample may significantly increase response time.
-              </p>
-            )}
-          </div>
+          {/* AI sample size — shown only when AI Comparison is enabled */}
+          {checksEnabled.includes('ai') && (
+            <div className="space-y-1.5">
+              <Label>AI Sample Size <span className="text-muted-foreground">(max 20)</span></Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={aiSampleSize}
+                onChange={(e) => setAiSampleSize(Number(e.target.value))}
+                className="w-24 font-mono"
+              />
+              {aiSampleSize > 10 && (
+                <p className="text-xs text-amber-600">
+                  Large sample may significantly increase response time.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Previous session (delta) */}
           {checksEnabled.includes('delta') && (
