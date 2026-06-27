@@ -8,6 +8,43 @@ import type { AiComparison } from '@/generated/prisma/client'
 
 type Obj = Record<string, unknown>
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function rowBg(
+  dynamic: true | undefined,
+  dbKey: string,
+  compareVal: unknown,
+  dbVal: unknown,
+  hasBoth: boolean,
+  match: boolean,
+  gpsDist: number | null,
+): string {
+  if (!hasBoth) return ''
+  if (match) return 'bg-green-500/15'
+  if (!dynamic) return 'bg-red-500/15'
+
+  if (dbKey === 'battery') {
+    const a = typeof compareVal === 'number' ? compareVal : null
+    const b = typeof dbVal     === 'number' ? dbVal      : null
+    if (a == null || b == null || a < 0 || a > 100 || b < 0 || b > 100) return 'bg-red-500/15'
+    return 'bg-yellow-500/15'
+  }
+
+  if (dbKey === 'location_lat' || dbKey === 'location_lng') {
+    if (gpsDist === null || gpsDist >= 50) return 'bg-red-500/15'
+    return 'bg-yellow-500/15'
+  }
+
+  return 'bg-yellow-500/15'
+}
+
 const verdictVariant = {
   Same:         'default',
   SomewhatSame: 'secondary',
@@ -25,6 +62,18 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
       (constant !== undefined || (apiKey !== undefined && apiKey in api)) &&
       (!onlyWhen || onlyWhen(api)),
   )
+
+  // Pre-compute GPS distance so both coordinate rows share the same colour decision
+  const latRow = visibleRows.find(r => r.dbKey === 'location_lat')
+  const lngRow = visibleRows.find(r => r.dbKey === 'location_lng')
+  const gpsDist: number | null = (() => {
+    if (!latRow?.apiKey || !lngRow?.apiKey) return null
+    const aLat = api[latRow.apiKey], aLng = api[lngRow.apiKey]
+    const dLat = db['location_lat'],  dLng = db['location_lng']
+    if (typeof aLat !== 'number' || typeof aLng !== 'number' ||
+        typeof dLat !== 'number' || typeof dLng !== 'number') return null
+    return haversineKm(aLat, aLng, dLat, dLng)
+  })()
 
   const cell  = 'px-2 py-[3px] align-top'
   const mono  = 'font-mono text-[11px]'
@@ -50,7 +99,7 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
       </thead>
 
       <tbody>
-        {visibleRows.map(({ apiKey, dbKey, transform, note, constant }) => {
+        {visibleRows.map(({ apiKey, dbKey, transform, note, constant, dynamic }) => {
           const isConst    = constant !== undefined
           const apiPresent = apiKey !== undefined && apiKey in api
           const rawVal     = apiPresent ? api[apiKey!] : undefined
@@ -59,10 +108,10 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
           const dbVal      = db[dbKey]
 
           const compareVal = isConst ? constant : transformed
-          const hasBoth = (isConst || apiPresent) && dbPresent
-          const match   = hasBoth && JSON.stringify(compareVal) === JSON.stringify(dbVal)
-          const bg = !hasBoth ? '' : match ? 'bg-green-500/15' : 'bg-yellow-500/15'
-          const ruleText = note ?? (!transform && !isConst ? 'copy' : '')
+          const hasBoth    = (isConst || apiPresent) && dbPresent
+          const match      = hasBoth && JSON.stringify(compareVal) === JSON.stringify(dbVal)
+          const bg         = rowBg(dynamic, dbKey, compareVal, dbVal, hasBoth, match, gpsDist)
+          const ruleText   = note ?? (!transform && !isConst ? 'copy' : '')
 
           return (
             <tr key={`${apiKey ?? '_const'}-${dbKey}`} className={`rounded ${bg}`}>
