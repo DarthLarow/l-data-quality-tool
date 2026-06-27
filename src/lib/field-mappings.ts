@@ -63,14 +63,16 @@ export const ENTITY_FIELD_MAPPINGS: Record<string, FieldMapping> = {
   // POST /app/api/pay/pricelist + /app/api/getridepassbycity → pricings
   // Adapter creates separate snapshots per fee type (only one fee field per entity).
   pricings: [
+    // id = uuid5("ario_unlock_{city}") or "ario_per_minute_{city}" or "ario_ride_pass_{id}")
+    // discount_id = same uuid5 as pricing_plan_id (ride pass only; NULL for base pricing)
     { apiKey: 'id',              dbKey: 'pricing_plan_id'                                                    },
-    // base pricing (unlock entity has unlockFeeAmount; per-minute has timeFeeAmount)
+    { apiKey: 'id',              dbKey: 'discount_id'                                                        },
+    // base pricing — unlock entity has unlockFeeAmount; per-minute has timeFeeAmount
     { apiKey: 'unlockFeeAmount', dbKey: 'amt',               transform: div100,         note: '/100'         },
     { apiKey: 'timeFeeAmount',   dbKey: 'amt',               transform: div100,         note: '/100'         },
     { apiKey: 'currency',        dbKey: 'currency',          transform: currencySymbol, note: '$→AUD, NZ$→NZD' },
     // ride pass
     { apiKey: 'ridePassName',    dbKey: 'pricing_plan_name'                                                  },
-    { apiKey: 'ridePassId',      dbKey: 'discount_id'                                                        },
     { apiKey: 'currentPrice',    dbKey: 'amt',               transform: div100,         note: '/100'         },
     { apiKey: 'minutePrice',     dbKey: 'discounted_amount', transform: div100,         note: '/100'         },
     { apiKey: 'currencyName',    dbKey: 'currency'                                                           },
