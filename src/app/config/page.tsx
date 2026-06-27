@@ -1,13 +1,106 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Pencil, RefreshCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { AutoCheckConfigForm } from '@/components/config/AutoCheckConfigForm'
+import { AutoCheckConfigForm }    from '@/components/config/AutoCheckConfigForm'
 import { ScraperThresholdEditor } from '@/components/config/ScraperThresholdEditor'
 import type { AlertThreshold, AutoCheckConfig, Scraper } from '@/generated/prisma/client'
 
 type OpenPanel = { appId: string; panel: 'autocheck' | 'thresholds' } | null
+
+// ── Custom Switch ────────────────────────────────────────────────────────────
+
+function CustomSwitch({ checked, disabled, onChange }: {
+  checked: boolean; disabled?: boolean; onChange: () => void
+}) {
+  return (
+    <div
+      onClick={disabled ? undefined : onChange}
+      style={{
+        position:     'relative',
+        width:        '34px',
+        height:       '19px',
+        borderRadius: '10px',
+        background:   checked ? '#3fb950' : 'rgba(255,255,255,0.14)',
+        cursor:       disabled ? 'not-allowed' : 'pointer',
+        opacity:      disabled ? 0.6 : 1,
+        transition:   'background 0.15s',
+        flexShrink:   0,
+      }}
+    >
+      <div style={{
+        position:     'absolute',
+        top:          '2px',
+        left:         checked ? '17px' : '2px',
+        width:        '15px',
+        height:       '15px',
+        borderRadius: '50%',
+        background:   '#ffffff',
+        transition:   'left 0.15s',
+      }} />
+    </div>
+  )
+}
+
+// ── Icon button ──────────────────────────────────────────────────────────────
+
+function IconBtn({ onClick, active, amber, title, children }: {
+  onClick: () => void; active: boolean; amber?: boolean; title?: string; children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className="flex items-center justify-center rounded-[6px] transition-colors"
+      style={{
+        width:      '28px',
+        height:     '28px',
+        border:     active && amber
+          ? '1px solid rgba(210,153,34,0.4)'
+          : '1px solid rgba(255,255,255,0.1)',
+        background: active && amber
+          ? 'rgba(210,153,34,0.12)'
+          : active
+          ? 'rgba(255,255,255,0.07)'
+          : 'transparent',
+        color:      active && amber ? '#d29922' : '#9a9a9a',
+        cursor:     'pointer',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ── SVG icons ────────────────────────────────────────────────────────────────
+
+const PencilSVG = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <path d="M8.5 1.5L10.5 3.5L3.5 10.5H1.5V8.5L8.5 1.5Z"
+      stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M7 3L9 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+  </svg>
+)
+
+const BellSVG = () => (
+  <svg width="12" height="13" viewBox="0 0 12 13" fill="none">
+    <path d="M6 2C4 2 2.5 3.5 2.5 5.5V8.5L1.5 9.5H10.5L9.5 8.5V5.5C9.5 3.5 8 2 6 2Z"
+      stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4.5 9.5C4.5 10.3 5.2 11 6 11C6.8 11 7.5 10.3 7.5 9.5"
+      stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+)
+
+const SyncSVG = ({ spin }: { spin: boolean }) => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+    style={{ flexShrink: 0, animation: spin ? 'spin 1s linear infinite' : 'none' }}>
+    <path d="M10 6A4 4 0 1 1 8.5 2.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <polyline points="10 1 10 4 7 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+)
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+const COLS = '150px 1.4fr 1.3fr 130px'
 
 export default function ConfigPage() {
   const [scrapers,    setScrapers]    = useState<Scraper[]>([])
@@ -55,151 +148,176 @@ export default function ConfigPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Config</h1>
-        <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
-          <RefreshCw size={13} className={syncing ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
+    <div className="flex flex-col">
+      {/* ── Page header ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-between border-b px-[22px] py-[16px]"
+        style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        <div>
+          <div className="text-[16px] font-semibold" style={{ letterSpacing: '-0.015em' }}>
+            Scraper Config
+          </div>
+          <div className="mt-[3px] text-[12px]" style={{ color: '#8a8a8a' }}>
+            Auto-check schedules and alert thresholds
+          </div>
+        </div>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="flex items-center gap-[7px] rounded-[7px] px-[12px] py-[7px] text-[12px] font-medium transition-colors"
+          style={{
+            border:     '1px solid rgba(255,255,255,0.13)',
+            color:      '#ededed',
+            cursor:     syncing ? 'not-allowed' : 'pointer',
+            background: 'transparent',
+            opacity:    syncing ? 0.7 : 1,
+          }}
+        >
+          <SyncSVG spin={syncing} />
           {syncing ? 'Syncing…' : 'Sync from scrapers_db'}
-        </Button>
+        </button>
       </div>
 
-      {scrapers.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          No active scrapers — click "Sync from scrapers_db" to load.
-        </p>
-      ) : (
-        <div className="rounded-lg border divide-y divide-border">
-          {/* ── Table header ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-[1fr_1.6fr_1fr_auto] gap-4 px-4 py-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-            <span>Scraper</span>
-            <span>Auto-check</span>
-            <span>Thresholds</span>
-            <span className="w-28" />
-          </div>
+      {/* ── Content area ────────────────────────────────────────── */}
+      <div style={{ background: '#080808' }}>
+        {scrapers.length === 0 ? (
+          <p className="py-16 text-center text-[12px]" style={{ color: '#6b6b6b' }}>
+            No scrapers — click "Sync from scrapers_db" to load.
+          </p>
+        ) : (
+          <>
+            {/* Table header */}
+            <div className="grid items-center gap-[12px] px-[22px] py-[10px] font-mono text-[10.5px] font-medium"
+              style={{
+                gridTemplateColumns: COLS,
+                color:        '#6b6b6b',
+                letterSpacing: '0.06em',
+                borderBottom: '1px solid rgba(255,255,255,0.07)',
+              }}>
+              <span>SCRAPER</span>
+              <span>AUTO-CHECK</span>
+              <span>THRESHOLDS</span>
+              <span className="text-right">ACTIONS</span>
+            </div>
 
-          {scrapers.map((scraper) => {
-            const config     = autoConfigs.find((c) => c.appId === scraper.appId) ?? null
-            const scraperThr = thresholds.filter((t) => t.appId === scraper.appId)
-            const isAutoOpen = open?.appId === scraper.appId && open.panel === 'autocheck'
-            const isThrOpen  = open?.appId === scraper.appId && open.panel === 'thresholds'
+            {/* Rows */}
+            {scrapers.map((scraper) => {
+              const config     = autoConfigs.find((c) => c.appId === scraper.appId) ?? null
+              const scraperThr = thresholds.filter((t) => t.appId === scraper.appId)
+              const isAutoOpen = open?.appId === scraper.appId && open.panel === 'autocheck'
+              const isThrOpen  = open?.appId === scraper.appId && open.panel === 'thresholds'
 
-            return (
-              <div key={scraper.appId}>
-                {/* ── Scraper row ─────────────────────────────────────── */}
-                <div className="grid grid-cols-[1fr_1.6fr_1fr_auto] gap-4 items-start px-4 py-3">
+              const dotColor = config?.isActive
+                ? '#3fb950'
+                : config
+                ? '#d29922'
+                : 'rgba(255,255,255,0.18)'
 
-                  {/* Scraper name */}
-                  <div>
-                    <p className="text-sm font-medium">{scraper.name}</p>
-                    <p className="data-value text-xs text-muted-foreground">{scraper.appId}</p>
+              return (
+                <div key={scraper.appId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  {/* Main row */}
+                  <div className="grid items-start gap-[12px] px-[22px] py-[13px]"
+                    style={{ gridTemplateColumns: COLS }}>
+
+                    {/* SCRAPER */}
+                    <div className="flex items-center gap-[8px]">
+                      <span className="shrink-0 rounded-full"
+                        style={{ width: '7px', height: '7px', background: dotColor }} />
+                      <div>
+                        <div className="text-[13px] font-medium">{scraper.name}</div>
+                        <div className="font-mono text-[10.5px]" style={{ color: '#5e5e5e' }}>
+                          {scraper.appId}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AUTO-CHECK */}
+                    <div>
+                      {config ? (
+                        <>
+                          <div className="text-[12.5px]" style={{ color: '#cfcfcf' }}>
+                            ● {config.environment} · {config.checksEnabled.map((c) => c === 'api_db' ? 'API→DB' : c).join(', ')}
+                          </div>
+                          <div className="mt-[2px] font-mono text-[11px]" style={{ color: '#6b6b6b' }}>
+                            {config.entityTypes.join(' · ')}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-[12px] italic" style={{ color: '#6b6b6b' }}>
+                          not configured
+                        </span>
+                      )}
+                    </div>
+
+                    {/* THRESHOLDS */}
+                    <div className="font-mono text-[12px]"
+                      style={{ color: scraperThr.length > 0 ? '#bdbdbd' : '#6b6b6b' }}>
+                      {scraperThr.length > 0
+                        ? `${scraperThr.length} set${scraperThr.length !== 1 ? 's' : ''} configured`
+                        : '—'}
+                    </div>
+
+                    {/* ACTIONS */}
+                    <div className="flex items-center justify-end gap-[10px]">
+                      {config && (
+                        <CustomSwitch
+                          checked={config.isActive}
+                          disabled={toggling === scraper.appId}
+                          onChange={() => toggleAutoCheck(config)}
+                        />
+                      )}
+                      <IconBtn
+                        active={isAutoOpen}
+                        title="Configure auto-check"
+                        onClick={() => togglePanel(scraper.appId, 'autocheck')}
+                      >
+                        <PencilSVG />
+                      </IconBtn>
+                      <IconBtn
+                        active={isThrOpen}
+                        amber
+                        title="Alert thresholds"
+                        onClick={() => togglePanel(scraper.appId, 'thresholds')}
+                      >
+                        <BellSVG />
+                      </IconBtn>
+                    </div>
                   </div>
 
-                  {/* Auto-check summary */}
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    {config ? (
-                      <>
-                        <p className="text-foreground">
-                          {config.environment}
-                          {' · '}
-                          {config.checksEnabled.map((c) => c === 'api_db' ? 'API→DB' : c).join(', ')}
-                        </p>
-                        <p>{config.entityTypes.join(', ')}</p>
-                      </>
-                    ) : (
-                      <span className="italic">not configured</span>
-                    )}
-                  </div>
-
-                  {/* Thresholds summary */}
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    {scraperThr.length > 0 ? (
-                      scraperThr.map((t) => {
-                        const tags = [
-                          t.missingCountWarning  != null || t.missingCountCritical  != null ? 'miss' : '',
-                          t.mismatchCountWarning != null || t.mismatchCountCritical != null ? 'mm'   : '',
-                          'δ',
-                        ].filter(Boolean)
-                        return (
-                          <p key={t.entityType} className="flex items-center gap-1.5">
-                            <span className="capitalize">{t.entityType}</span>
-                            {tags.map((tag) => (
-                              <span key={tag} className="rounded bg-muted px-1 py-px font-mono text-[9px] text-muted-foreground/70">{tag}</span>
-                            ))}
-                          </p>
-                        )
-                      })
-                    ) : (
-                      <span className="italic">—</span>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    {/* Toggle auto-check on/off */}
-                    {config && (
-                      <Switch
-                        checked={config.isActive}
-                        disabled={toggling === scraper.appId}
-                        onCheckedChange={() => toggleAutoCheck(config)}
-                        title={config.isActive ? 'Disable auto-check' : 'Enable auto-check'}
+                  {/* Inline panels */}
+                  {isAutoOpen && (
+                    <div className="px-[18px] pb-[14px]">
+                      <AutoCheckConfigForm
+                        scraper={{
+                          appId:                scraper.appId,
+                          supportedEntityTypes: scraper.supportedEntityTypes,
+                          cities:               scraper.cities,
+                        }}
+                        existingConfig={config}
+                        onSaved={async () => { await load(); setOpen(null) }}
+                        onCancel={() => setOpen(null)}
                       />
-                    )}
+                    </div>
+                  )}
 
-                    {/* Edit auto-check */}
-                    <Button
-                      variant={isAutoOpen ? 'secondary' : 'ghost'}
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      title="Configure auto-check"
-                      onClick={() => togglePanel(scraper.appId, 'autocheck')}
-                    >
-                      <Pencil size={13} />
-                    </Button>
-
-                    {/* Edit thresholds */}
-                    <Button
-                      variant={isThrOpen ? 'secondary' : 'ghost'}
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      title="Alert thresholds"
-                      onClick={() => togglePanel(scraper.appId, 'thresholds')}
-                    >
-                      <Bell size={13} />
-                    </Button>
-                  </div>
+                  {isThrOpen && (
+                    <div className="pb-[2px]">
+                      <ScraperThresholdEditor
+                        appId={scraper.appId}
+                        scraperName={scraper.name}
+                        thresholds={scraperThr}
+                        onSaved={load}
+                      />
+                    </div>
+                  )}
                 </div>
+              )
+            })}
+          </>
+        )}
+      </div>
 
-                {/* ── Inline panels ───────────────────────────────────── */}
-                {isAutoOpen && (
-                  <div className="border-t px-4 pb-4 pt-3">
-                    <AutoCheckConfigForm
-                      scraper={{
-                        appId:                scraper.appId,
-                        supportedEntityTypes: scraper.supportedEntityTypes,
-                        cities:               scraper.cities,
-                      }}
-                      existingConfig={config}
-                      onSaved={async () => { await load(); setOpen(null) }}
-                      onCancel={() => setOpen(null)}
-                    />
-                  </div>
-                )}
-
-                {isThrOpen && (
-                  <div className="border-t px-4 pb-4 pt-3">
-                    <ScraperThresholdEditor
-                      appId={scraper.appId}
-                      thresholds={scraperThr}
-                      onSaved={load}
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+      {/* CSS for spin animation */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }

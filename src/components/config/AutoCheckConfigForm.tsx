@@ -1,10 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ENTITY_TYPES } from '@/types'
 import type { CheckType, Environment } from '@/types'
 import type { AutoCheckConfig } from '@/generated/prisma/client'
@@ -22,35 +17,61 @@ interface Props {
   onCancel:       () => void
 }
 
-export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel }: Props) {
-  const supportedTypes = scraper.supportedEntityTypes
+function PillToggle({ active, onClick, children, disabled }: {
+  active: boolean; onClick: () => void; children: React.ReactNode; disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={disabled ? undefined : onClick}
+      className="rounded-[6px] px-[10px] py-[5px] text-[12px] transition-colors"
+      style={{
+        border:     active ? '1px solid rgba(255,255,255,0.22)' : '1px solid rgba(255,255,255,0.1)',
+        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+        color:      active ? '#ededed' : disabled ? '#4a4a4a' : '#8a8a8a',
+        cursor:     disabled ? 'not-allowed' : 'pointer',
+        opacity:    disabled ? 0.5 : 1,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
 
-  const [environment, setEnvironment]         = useState<Environment>(
+function FieldLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div className="mb-[7px] font-mono text-[10px] font-medium"
+      style={{ color: '#6b6b6b', letterSpacing: '0.05em', ...style }}>
+      {children}
+    </div>
+  )
+}
+
+export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel }: Props) {
+  const [environment,     setEnvironment]     = useState<Environment>(
     (existingConfig?.environment as Environment) ?? 'staging',
   )
-  const [entityTypes, setEntityTypes]         = useState<string[]>(
-    existingConfig !== null ? existingConfig.entityTypes : supportedTypes,
+  const [entityTypes,     setEntityTypes]     = useState<string[]>(
+    existingConfig !== null ? existingConfig.entityTypes : ENTITY_TYPES,
   )
-  const [checks, setChecks]                   = useState<CheckType[]>(
+  const [checks,          setChecks]          = useState<CheckType[]>(
     existingConfig !== null
       ? (existingConfig.checksEnabled as CheckType[])
       : ['api_db', 'delta'],
   )
-  const [polygonStrategy, setPolygonStrategy] = useState(
-    existingConfig?.polygonStrategy ?? 'random',
-  )
-  const [polygonCity, setPolygonCity]         = useState(existingConfig?.polygonCity ?? '')
-  const [aiSampleSize, setAiSampleSize]       = useState(existingConfig?.aiSampleSize ?? 5)
-  const [isActive, setIsActive]               = useState(existingConfig?.isActive ?? true)
-  const [saving, setSaving]                   = useState(false)
+  const [polygonStrategy, setPolygonStrategy] = useState(existingConfig?.polygonStrategy ?? 'random')
+  const [polygonCity,     setPolygonCity]     = useState(existingConfig?.polygonCity ?? '')
+  const [aiSampleSize,    setAiSampleSize]    = useState(existingConfig?.aiSampleSize ?? 5)
+  const [isActive,        setIsActive]        = useState(existingConfig?.isActive ?? true)
+  const [saving,          setSaving]          = useState(false)
 
   const checksError = isActive && checks.length === 0
 
-  function setEntity(et: string, checked: boolean) {
-    setEntityTypes((p) => checked ? [...p, et] : p.filter((x) => x !== et))
+  function toggleEntity(et: string) {
+    setEntityTypes((p) => p.includes(et) ? p.filter((x) => x !== et) : [...p, et])
   }
-  function setCheck(ct: CheckType, checked: boolean) {
-    setChecks((p) => checked ? [...p, ct] : p.filter((x) => x !== ct))
+  function toggleCheck(ct: CheckType) {
+    setChecks((p) => p.includes(ct) ? p.filter((x) => x !== ct) : [...p, ct])
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -75,106 +96,207 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-md border bg-muted/30 p-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label>Environment</Label>
-          <Select value={environment} onValueChange={(v) => setEnvironment(v as Environment)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="staging">Staging</SelectItem>
-              <SelectItem value="production">Production</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Polygon Strategy</Label>
-          <Select value={polygonStrategy} onValueChange={setPolygonStrategy}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="random">Random polygon</SelectItem>
-              <SelectItem value="by_city_all">By city — all</SelectItem>
-              <SelectItem value="by_city_random">By city — random</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+    <form onSubmit={handleSubmit}
+      className="rounded-[9px] p-[16px_18px]"
+      style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)' }}>
+
+      {/* Panel header */}
+      <div className="mb-[14px] font-mono text-[11px] font-semibold"
+        style={{ color: '#9a9a9a', letterSpacing: '0.05em' }}>
+        AUTO-CHECK CONFIG · {scraper.appId.toUpperCase()}
       </div>
 
-      {(polygonStrategy === 'by_city_all' || polygonStrategy === 'by_city_random') && (
-        <div className="space-y-1.5">
-          <Label>City</Label>
-          {scraper.cities.length > 0 ? (
-            <Select value={polygonCity} onValueChange={setPolygonCity}>
-              <SelectTrigger><SelectValue placeholder="Select city" /></SelectTrigger>
-              <SelectContent>
-                {scraper.cities.map((city) => (
-                  <SelectItem key={city} value={city}>{city}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              placeholder="City name"
-              value={polygonCity}
-              onChange={(e) => setPolygonCity(e.target.value)}
-            />
+      <div className="flex flex-col gap-[14px]">
+
+        {/* Environment */}
+        <div>
+          <FieldLabel>ENVIRONMENT</FieldLabel>
+          <div className="flex w-fit overflow-hidden rounded-[7px]"
+            style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+            {(['staging', 'production'] as Environment[]).map((env, i) => (
+              <button
+                key={env}
+                type="button"
+                onClick={() => setEnvironment(env)}
+                className="px-[14px] py-[6px] text-[12px] capitalize transition-colors"
+                style={{
+                  background: environment === env ? 'rgba(255,255,255,0.09)' : 'transparent',
+                  color:      environment === env ? '#ededed' : '#8a8a8a',
+                  fontWeight: environment === env ? 500 : 400,
+                  borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                  cursor:     'pointer',
+                }}
+              >
+                {env}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Polygon strategy */}
+        <div>
+          <FieldLabel>POLYGON</FieldLabel>
+          <div className="flex flex-wrap gap-[6px]">
+            {[
+              { value: 'random',         label: 'Random'        },
+              { value: 'by_city_all',    label: 'City — all'    },
+              { value: 'by_city_random', label: 'City — random' },
+            ].map((opt) => (
+              <PillToggle
+                key={opt.value}
+                active={polygonStrategy === opt.value}
+                onClick={() => setPolygonStrategy(opt.value)}
+              >
+                {opt.label}
+              </PillToggle>
+            ))}
+          </div>
+
+          {(polygonStrategy === 'by_city_all' || polygonStrategy === 'by_city_random') && (
+            <div className="mt-[8px]">
+              {scraper.cities.length > 0 ? (
+                <div className="flex flex-wrap gap-[6px]">
+                  {scraper.cities.map((city) => (
+                    <PillToggle
+                      key={city}
+                      active={polygonCity === city}
+                      onClick={() => setPolygonCity(city)}
+                    >
+                      {city}
+                    </PillToggle>
+                  ))}
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={polygonCity}
+                  onChange={(e) => setPolygonCity(e.target.value)}
+                  placeholder="City name"
+                  className="rounded-[6px] bg-transparent px-[10px] py-[6px] text-[12px] outline-none"
+                  style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#ededed', maxWidth: '200px' }}
+                />
+              )}
+            </div>
           )}
         </div>
-      )}
 
-      <div className="space-y-1.5">
-        <Label>Entity Types</Label>
-        <div className="flex flex-wrap gap-4">
-          {ENTITY_TYPES.map((et) => (
-            <label key={et} className="flex items-center gap-2 cursor-pointer text-sm">
-              <Checkbox
-                checked={entityTypes.includes(et)}
-                onCheckedChange={(v) => setEntity(et, v === true)}
-              />
-              {et}
-            </label>
-          ))}
+        {/* Entity types */}
+        <div>
+          <FieldLabel>ENTITY TYPES</FieldLabel>
+          <div className="flex flex-wrap gap-[6px]">
+            {ENTITY_TYPES.map((et) => (
+              <PillToggle
+                key={et}
+                active={entityTypes.includes(et)}
+                onClick={() => toggleEntity(et)}
+              >
+                {et}
+              </PillToggle>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-1.5">
-        <Label className={checksError ? 'text-destructive' : ''}>Check Types</Label>
-        <div className={`flex gap-5 rounded-md px-2 py-1 ${checksError ? 'border border-destructive bg-destructive/5' : ''}`}>
-          {(['api_db', 'delta'] as CheckType[]).map((ct) => (
-            <label key={ct} className="flex items-center gap-2 cursor-pointer text-sm">
-              <Checkbox checked={checks.includes(ct)} onCheckedChange={(v) => setCheck(ct, v === true)} />
-              {ct === 'api_db' ? 'API→DB' : 'Delta'}
-            </label>
-          ))}
+        {/* Check types */}
+        <div>
+          <FieldLabel style={checksError ? { color: '#f85149' } : undefined}>
+            CHECK TYPES{checksError ? ' — enable at least one' : ''}
+          </FieldLabel>
+          <div className="flex flex-wrap gap-[6px]">
+            {([
+              ['api_db', 'API→DB'] as const,
+              ['delta',  'Delta']  as const,
+            ]).map(([ct, label]) => (
+              <PillToggle
+                key={ct}
+                active={checks.includes(ct)}
+                onClick={() => toggleCheck(ct)}
+              >
+                {label}
+              </PillToggle>
+            ))}
+          </div>
         </div>
-        {checksError && (
-          <p className="text-xs text-destructive">Enable at least one check type when auto-check is active.</p>
-        )}
-      </div>
 
-      <div className="flex items-end gap-6">
-        <div className="space-y-1.5">
-          <Label>AI Sample Size</Label>
-          <Input
-            type="number" min={0} max={20}
+        {/* AI Sample Size */}
+        <div>
+          <FieldLabel>AI SAMPLE SIZE</FieldLabel>
+          <input
+            type="number"
+            min={0}
+            max={20}
             value={aiSampleSize}
             onChange={(e) => setAiSampleSize(Number(e.target.value))}
-            className="w-24 font-mono"
+            className="rounded-[6px] bg-transparent px-[10px] py-[6px] text-center font-mono text-[13px] outline-none"
+            style={{
+              width:      '80px',
+              border:     '1px solid rgba(255,255,255,0.1)',
+              background: '#080808',
+              color:      '#ededed',
+            }}
           />
         </div>
-        <label className="flex items-center gap-2 cursor-pointer text-sm pb-2">
-          <Checkbox checked={isActive} onCheckedChange={(v) => setIsActive(Boolean(v))} />
-          Active
-        </label>
-      </div>
 
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={saving || checksError}>
-          {saving ? 'Saving…' : 'Save'}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
+        {/* Active toggle */}
+        <div className="flex items-center gap-[10px]">
+          <div
+            onClick={() => setIsActive((v) => !v)}
+            style={{
+              position:     'relative',
+              width:        '34px',
+              height:       '19px',
+              borderRadius: '10px',
+              background:   isActive ? '#3fb950' : 'rgba(255,255,255,0.14)',
+              cursor:       'pointer',
+              transition:   'background 0.15s',
+              flexShrink:   0,
+            }}
+          >
+            <div style={{
+              position:     'absolute',
+              top:          '2px',
+              left:         isActive ? '17px' : '2px',
+              width:        '15px',
+              height:       '15px',
+              borderRadius: '50%',
+              background:   '#ffffff',
+              transition:   'left 0.15s',
+            }} />
+          </div>
+          <span className="text-[12px]" style={{ color: isActive ? '#cfcfcf' : '#6b6b6b' }}>
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex items-center gap-[8px] pt-[2px]">
+          <button
+            type="submit"
+            disabled={saving || checksError}
+            className="rounded-[7px] px-[14px] py-[7px] text-[12px] font-semibold transition-opacity"
+            style={{
+              background: '#ededed',
+              color:      '#0a0a0a',
+              cursor:     saving || checksError ? 'not-allowed' : 'pointer',
+              opacity:    saving || checksError ? 0.5 : 1,
+              border:     'none',
+            }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-[7px] px-[14px] py-[7px] text-[12px] font-medium transition-colors"
+            style={{
+              background: 'transparent',
+              border:     '1px solid rgba(255,255,255,0.1)',
+              color:      '#8a8a8a',
+              cursor:     'pointer',
+            }}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </form>
   )
