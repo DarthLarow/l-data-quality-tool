@@ -38,7 +38,9 @@ const validDayToDesc = (v: unknown) =>
 const toStr = (v: unknown) => String(v)
 
 // Pricings sub-type predicates
-const isRidePass   = (api: ApiSnapshot) => 'currentPrice' in api
+const isRidePass    = (api: ApiSnapshot) => 'currentPrice'    in api
+const isUnlock      = (api: ApiSnapshot) => 'unlockFeeAmount' in api
+const isPerMinute   = (api: ApiSnapshot) => 'timeFeeAmount'   in api
 const isBasePricing = (api: ApiSnapshot) => !isRidePass(api)
 
 // Per-scraper field mapping registry.
@@ -76,18 +78,25 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
     pricings: [
       { apiKey: 'id',              dbKey: 'pricing_plan_id'                                                                           },
       // discount_id = same uuid as pricing_plan_id for ride pass; NULL in DB for base pricing
-      { apiKey: 'id',              dbKey: 'discount_id',       onlyWhen: isRidePass                                                   },
-      // base pricing fields
-      { apiKey: 'unlockFeeAmount', dbKey: 'amt',               transform: div100,         note: '/100', onlyWhen: isBasePricing       },
-      { apiKey: 'timeFeeAmount',   dbKey: 'amt',               transform: div100,         note: '/100', onlyWhen: isBasePricing       },
-      { apiKey: 'currency',        dbKey: 'currency',          transform: currencySymbol, note: '$→AUD, NZ$→NZD', onlyWhen: isBasePricing },
-      // ride pass fields
-      { apiKey: 'ridePassName',    dbKey: 'pricing_plan_name',                                          onlyWhen: isRidePass          },
-      { apiKey: 'currentPrice',    dbKey: 'amt',               transform: div100,         note: '/100', onlyWhen: isRidePass          },
-      { apiKey: 'minutePrice',     dbKey: 'discounted_amount', transform: div100,         note: '/100', onlyWhen: isRidePass          },
-      { apiKey: 'currencyName',    dbKey: 'currency',                                                   onlyWhen: isRidePass          },
+      { apiKey: 'id',              dbKey: 'discount_id',             onlyWhen: isRidePass                                             },
+      // name — internal identifier, always a constant per sub-type
+      {                            dbKey: 'name', constant: 'unlock_fee',      note: 'constant "unlock_fee"',      onlyWhen: isUnlock    },
+      {                            dbKey: 'name', constant: 'per_minute_cost', note: 'constant "per_minute_cost"', onlyWhen: isPerMinute },
+      {                            dbKey: 'name', constant: 'ride_pass',       note: 'constant "ride_pass"',       onlyWhen: isRidePass  },
+      // pricing_plan_name — human-readable label
+      {                            dbKey: 'pricing_plan_name', constant: 'Unlock fee',      note: 'constant "Unlock fee"',      onlyWhen: isUnlock    },
+      {                            dbKey: 'pricing_plan_name', constant: 'Per-minute cost', note: 'constant "Per-minute cost"', onlyWhen: isPerMinute },
+      { apiKey: 'ridePassName',    dbKey: 'pricing_plan_name',                                                                   onlyWhen: isRidePass  },
+      // base pricing fee fields
+      { apiKey: 'unlockFeeAmount', dbKey: 'amt',               transform: div100,         note: '/100',              onlyWhen: isUnlock    },
+      { apiKey: 'timeFeeAmount',   dbKey: 'amt',               transform: div100,         note: '/100',              onlyWhen: isPerMinute },
+      { apiKey: 'currency',        dbKey: 'currency',          transform: currencySymbol, note: '$→AUD, NZ$→NZD',    onlyWhen: isBasePricing },
+      // ride pass fee fields
+      { apiKey: 'currentPrice',    dbKey: 'amt',               transform: div100,         note: '/100',              onlyWhen: isRidePass  },
+      { apiKey: 'minutePrice',     dbKey: 'discounted_amount', transform: div100,         note: '/100',              onlyWhen: isRidePass  },
+      { apiKey: 'currencyName',    dbKey: 'currency',                                                                onlyWhen: isRidePass  },
       { apiKey: 'validDay',        dbKey: 'descriptions',      transform: validDayToDesc, note: '"Valid for N day(s)"', onlyWhen: isRidePass },
-      {                            dbKey: 'vehicle_type',      constant: 'scooter',       note: 'constant "scooter"'                  },
+      {                            dbKey: 'vehicle_type',      constant: 'scooter',       note: 'constant "scooter"'                        },
     ],
 
     // Placeholder — update when a real docked adapter exists
