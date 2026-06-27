@@ -73,7 +73,7 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
 
           const apiSnapshot = result.apiEntityMap.get(entityId) ?? { id: entityId }
 
-          const comparison = await compareEntities(apiSnapshot, dbSnapshot, entityType)
+          const comparison = await compareEntities(apiSnapshot, dbSnapshot, entityType, input.appId)
 
           await prisma.aiComparison.create({
             data: {

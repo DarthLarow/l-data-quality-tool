@@ -48,7 +48,7 @@ export function SessionResultsTabs({ session }: Props) {
                   <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     AI Comparison
                   </h3>
-                  <AiResultsTab comparisons={aiComparisons} />
+                  <AiResultsTab comparisons={aiComparisons} appId={session.appId} />
                 </div>
               )}
             </div>

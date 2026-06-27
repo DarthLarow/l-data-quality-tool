@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { ENTITY_FIELD_MAPPINGS } from '@/lib/field-mappings'
+import { getFieldMapping } from '@/lib/field-mappings'
 import type { AiComparison } from '@/generated/prisma/client'
 
 type Obj = Record<string, unknown>
@@ -16,10 +16,10 @@ const verdictVariant = {
 
 // ─── Diff table ───────────────────────────────────────────────────────────────
 
-function DiffTable({ api, db, entityType }: { api: Obj; db: Obj; entityType: string }) {
+function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityType: string; appId: string }) {
   const [rawOpen, setRawOpen] = useState(false)
 
-  const mapping = ENTITY_FIELD_MAPPINGS[entityType] ?? []
+  const mapping = getFieldMapping(appId, entityType)
   const visibleRows = mapping.filter(
     ({ apiKey, constant }) => constant !== undefined || (apiKey !== undefined && apiKey in api),
   )
@@ -110,14 +110,14 @@ function DiffTable({ api, db, entityType }: { api: Obj; db: Obj; entityType: str
 
 // ─── Expanded detail ──────────────────────────────────────────────────────────
 
-function ComparisonDetail({ c }: { c: AiComparison }) {
+function ComparisonDetail({ c, appId }: { c: AiComparison; appId: string }) {
   const api = (c.apiSnapshot ?? {}) as Obj
   const db  = (c.dbSnapshot  ?? {}) as Obj
 
   return (
     <div className="mt-3 border-t pt-3">
       <div className="rounded-md bg-muted p-2 overflow-auto">
-        <DiffTable api={api} db={db} entityType={c.entityType} />
+        <DiffTable api={api} db={db} entityType={c.entityType} appId={appId} />
       </div>
     </div>
   )
@@ -125,9 +125,9 @@ function ComparisonDetail({ c }: { c: AiComparison }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-interface Props { comparisons: AiComparison[] }
+interface Props { comparisons: AiComparison[]; appId: string }
 
-export function AiResultsTab({ comparisons }: Props) {
+export function AiResultsTab({ comparisons, appId }: Props) {
   const [openId, setOpenId] = useState<string | null>(null)
 
   if (comparisons.length === 0) {
@@ -172,7 +172,7 @@ export function AiResultsTab({ comparisons }: Props) {
                     <p className="text-sm mt-0.5">{c.explanation}</p>
                   </div>
                 </div>
-                {isOpen && <ComparisonDetail c={c} />}
+                {isOpen && <ComparisonDetail c={c} appId={appId} />}
               </CardContent>
             </Card>
           )
