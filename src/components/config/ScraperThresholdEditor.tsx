@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { ENTITY_TYPES } from '@/types'
 import type { AlertThreshold } from '@/generated/prisma/client'
 
@@ -171,10 +171,10 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
             style={{ gridTemplateColumns: GRID }}>
             <div className="text-[10px]" style={{ color: 'var(--dq-text-7)', letterSpacing: '0.04em' }}>ENTITY</div>
             {[0, 1, 2].map((g) => (
-              <>
-                <div key={`w${g}`} className="text-center" style={{ color: 'var(--dq-amber)' }}>W</div>
-                <div key={`c${g}`} className="text-center" style={{ color: 'var(--dq-red)' }}>C</div>
-              </>
+              <React.Fragment key={g}>
+                <div className="text-center" style={{ color: 'var(--dq-amber)' }}>W</div>
+                <div className="text-center" style={{ color: 'var(--dq-red)' }}>C</div>
+              </React.Fragment>
             ))}
             <div />
           </div>
