@@ -108,15 +108,6 @@ export function ScraperGrid() {
           )}
         </div>
         <div className="flex items-center gap-[10px]">
-          {/* Search (visual only — filter not implemented yet) */}
-          <div className="flex items-center gap-[7px] rounded-[7px] px-[11px] py-[7px] font-mono text-[12px]"
-            style={{ border: '1px solid var(--dq-border-3)', color: 'var(--dq-text-6)', width: '160px' }}>
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.4" />
-              <line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-            search…
-          </div>
           <Link href="/sessions/new"
             className="rounded-[7px] px-[13px] py-[8px] text-[12px] font-semibold"
             style={{ background: 'var(--dq-btn-bg)', color: 'var(--dq-btn-fg)' }}>
