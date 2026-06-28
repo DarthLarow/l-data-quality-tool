@@ -15,12 +15,8 @@ function formatPolygon(strategyIds: string[], resolvedIds: string[]): string {
   const cityAll    = strategy.match(/^__city_by_city_all__:(.+)$/)
   const cityRandom = strategy.match(/^__city_by_city_random__:(.+)$/)
 
-  if (cityAll) {
-    const city = cityAll[1]
-    if (resolvedIds.length > 1)
-      return `${city} — ${resolvedIds.length} polygons (${resolvedIds.join(', ')})`
-    return resolved ? `${city} — all polygons (${resolved})` : `${city} — all polygons`
-  }
+  if (cityAll)
+    return `${cityAll[1]} — all polygons`
 
   if (cityRandom) {
     const city = cityRandom[1]
