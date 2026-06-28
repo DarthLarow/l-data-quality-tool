@@ -4,16 +4,31 @@ import { prisma }   from '@/lib/quality-db'
 import { SessionResultsTabs } from '@/components/sessions/SessionResultsTabs'
 import { RerunButton }        from '@/components/sessions/RerunButton'
 
-function formatPolygon(ids: string[]): string {
-  if (!ids || ids.length === 0) return '—'
-  const first = ids[0] ?? ''
-  if (first === '__random__') return 'random polygon'
-  const cityAll    = first.match(/^__city_by_city_all__:(.+)$/)
-  const cityRandom = first.match(/^__city_by_city_random__:(.+)$/)
-  if (cityAll)    return `${cityAll[1]} — all polygons`
-  if (cityRandom) return `${cityRandom[1]} — random polygon`
-  if (ids.length === 1) return `polygon ${first}`
-  return `${ids.length} polygons`
+function formatPolygon(strategyIds: string[], resolvedIds: string[]): string {
+  if (!strategyIds || strategyIds.length === 0) return '—'
+  const strategy = strategyIds[0] ?? ''
+  const resolved = resolvedIds[0] ?? ''
+
+  if (strategy === '__random__')
+    return resolved ? `random polygon (${resolved})` : 'random polygon'
+
+  const cityAll    = strategy.match(/^__city_by_city_all__:(.+)$/)
+  const cityRandom = strategy.match(/^__city_by_city_random__:(.+)$/)
+
+  if (cityAll) {
+    const city = cityAll[1]
+    if (resolvedIds.length > 1)
+      return `${city} — ${resolvedIds.length} polygons (${resolvedIds.join(', ')})`
+    return resolved ? `${city} — all polygons (${resolved})` : `${city} — all polygons`
+  }
+
+  if (cityRandom) {
+    const city = cityRandom[1]
+    return resolved ? `${city} — random polygon (${resolved})` : `${city} — random polygon`
+  }
+
+  // by_id — strategy already contains the real ID
+  return `polygon (${strategy})`
 }
 
 function relTime(d: Date) {
@@ -110,7 +125,10 @@ export default async function SessionPage({
           <div className="mt-[6px] font-mono text-[11.5px]" style={{ color: 'var(--dq-text-6)' }}>
             scrapers session #{session.scrapersSessionId}
             {' · '}
-            {formatPolygon(session.polygonIds)}
+            {formatPolygon(
+              session.polygonIds,
+              [...new Set(session.polygonChecks.map((p) => p.polygonId))],
+            )}
             {' · '}
             created {relTime(session.createdAt)}
           </div>
