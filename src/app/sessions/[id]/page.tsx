@@ -4,6 +4,18 @@ import { prisma }   from '@/lib/quality-db'
 import { SessionResultsTabs } from '@/components/sessions/SessionResultsTabs'
 import { RerunButton }        from '@/components/sessions/RerunButton'
 
+function formatPolygon(ids: string[]): string {
+  if (!ids || ids.length === 0) return '—'
+  const first = ids[0] ?? ''
+  if (first === '__random__') return 'random polygon'
+  const cityAll    = first.match(/^__city_by_city_all__:(.+)$/)
+  const cityRandom = first.match(/^__city_by_city_random__:(.+)$/)
+  if (cityAll)    return `${cityAll[1]} — all polygons`
+  if (cityRandom) return `${cityRandom[1]} — random polygon`
+  if (ids.length === 1) return `polygon ${first}`
+  return `${ids.length} polygons`
+}
+
 function relTime(d: Date) {
   const diff = Date.now() - d.getTime()
   const m = Math.floor(diff / 60000)
@@ -97,6 +109,8 @@ export default async function SessionPage({
           {/* Meta */}
           <div className="mt-[6px] font-mono text-[11.5px]" style={{ color: 'var(--dq-text-6)' }}>
             scrapers session #{session.scrapersSessionId}
+            {' · '}
+            {formatPolygon(session.polygonIds)}
             {' · '}
             created {relTime(session.createdAt)}
           </div>
