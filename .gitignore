@@ -44,4 +44,7 @@ next-env.d.ts
 # external system docs (not for version control)
 /externalSystemDocs/
 
+# design briefs (binary/generated artifacts)
+/docs/design/
+
 /src/generated/prisma
