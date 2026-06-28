@@ -201,8 +201,9 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
           </FieldLabel>
           <div className="flex flex-wrap gap-[6px]">
             {([
-              ['api_db', 'API→DB'] as const,
-              ['delta',  'Delta']  as const,
+              ['api_db', 'API→DB']      as const,
+              ['ai',     'Field Check'] as const,
+              ['delta',  'Delta']       as const,
             ]).map(([ct, label]) => (
               <PillToggle
                 key={ct}
