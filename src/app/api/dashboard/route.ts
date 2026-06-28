@@ -11,6 +11,7 @@ export async function GET() {
         include: {
           entityCheckSummaries: true,
           aiComparisons: { select: { verdict: true } },
+          sessionDeltaChecks: true,
         },
       },
     },

@@ -10,6 +10,12 @@ interface EntitySummary {
   totalFoundInDb:    number
   totalNotFoundInDb: number
 }
+interface DeltaSummary {
+  entityType:    string
+  deltaPercent:  number
+  currentCount:  number
+  previousCount: number
+}
 interface Session {
   id:                  string
   createdAt:           string
@@ -19,6 +25,7 @@ interface Session {
   checksEnabled:       string[]
   entityTypes:         string[]
   entityCheckSummaries: EntitySummary[]
+  sessionDeltaChecks:  DeltaSummary[]
   aiComparisons:       AiVerdict[]
 }
 interface ScraperItem {
@@ -36,6 +43,8 @@ function computeHealth(s: Session | undefined): Health {
   if (s.status === 'failed')  return 'critical'
   if (s.aiComparisons.some((c) => c.verdict === 'Different'))        return 'critical'
   if (s.entityCheckSummaries.some((e) => e.totalNotFoundInDb > 0))  return 'warning'
+  if (s.sessionDeltaChecks.some((d) => Math.abs(d.deltaPercent) > 25)) return 'critical'
+  if (s.sessionDeltaChecks.some((d) => Math.abs(d.deltaPercent) > 10)) return 'warning'
   return 'healthy'
 }
 
@@ -52,6 +61,19 @@ function relTime(iso: string): string {
 function pctColor(p: number) {
   return p >= 98 ? 'var(--dq-green)' : p >= 94 ? 'var(--dq-amber)' : 'var(--dq-red)'
 }
+
+function deltaColor(pct: number) {
+  const abs = Math.abs(pct)
+  if (abs <= 10) return 'var(--dq-green)'
+  if (abs <= 25) return 'var(--dq-amber)'
+  return 'var(--dq-red)'
+}
+
+function fmtDelta(pct: number) {
+  return `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`
+}
+
+const ENTITY_ORDER = ['dockless', 'docked', 'pricings', 'zones'] as const
 
 const ACCENT: Record<Health, string> = {
   healthy: 'var(--dq-green)',
@@ -146,6 +168,22 @@ export function ScraperGrid() {
 
               const envLive = last?.environment === 'production'
 
+              // ── Delta helpers ──────────────────────────────────
+              const deltaMap = new Map(
+                (last?.sessionDeltaChecks ?? []).map((d) => [d.entityType, d]),
+              )
+              const hasCoverage = (last?.entityCheckSummaries ?? []).some((e) => e.totalUniqueInApi > 0)
+              const hasDelta    = deltaMap.size > 0
+              const showDeltaCol  = hasCoverage && hasDelta
+              const showDeltaOnly = !hasCoverage && hasDelta
+
+              // Canonical entity row order
+              const entityRows = ENTITY_ORDER.filter(
+                (et) =>
+                  (last?.entityCheckSummaries ?? []).some((e) => e.entityType === et && e.totalUniqueInApi > 0) ||
+                  deltaMap.has(et),
+              )
+
               return (
                 <div
                   key={scraper.id}
@@ -237,16 +275,43 @@ export function ScraperGrid() {
                         </span>
                       </div>
 
-                      {/* Coverage rows — skip entities with 0 API items (no data collected) */}
-                      {last.entityCheckSummaries.some((e) => e.totalUniqueInApi > 0) && (
+                      {/* Entity rows */}
+                      {entityRows.length > 0 && (
                         <div className="flex flex-col">
-                          {last.entityCheckSummaries.filter((e) => e.totalUniqueInApi > 0).map((e) => {
+                          {entityRows.map((et) => {
+                            const e = last.entityCheckSummaries.find((x) => x.entityType === et)
+                            const d = deltaMap.get(et)
+
+                            if (showDeltaOnly && d) {
+                              // Delta-only: entity | prev→curr | Δ%
+                              return (
+                                <div key={et}
+                                  className="grid items-center gap-[8px] py-[4px]"
+                                  style={{ gridTemplateColumns: '1fr auto auto', borderTop: '1px solid var(--dq-border-1)' }}>
+                                  <span className="text-[12px]" style={{ color: 'var(--dq-text-3)' }}>{et}</span>
+                                  <span className="text-right font-mono text-[11px]" style={{ color: 'var(--dq-text-7)' }}>
+                                    {d.previousCount}→{d.currentCount}
+                                  </span>
+                                  <span className="text-right font-mono text-[12px] font-medium"
+                                    style={{ color: deltaColor(d.deltaPercent), minWidth: '46px' }}>
+                                    {fmtDelta(d.deltaPercent)}
+                                  </span>
+                                </div>
+                              )
+                            }
+
+                            if (!e || e.totalUniqueInApi === 0) return null
                             const pct = Math.round((e.totalFoundInDb / e.totalUniqueInApi) * 100)
+
+                            // Coverage [+ optional delta] row
                             return (
-                              <div key={e.entityType}
-                                className="grid items-center gap-[10px] py-[4px]"
-                                style={{ gridTemplateColumns: '1fr auto 42px', borderTop: '1px solid var(--dq-border-1)' }}>
-                                <span className="text-[12px]" style={{ color: 'var(--dq-text-3)' }}>{e.entityType}</span>
+                              <div key={et}
+                                className="grid items-center gap-[8px] py-[4px]"
+                                style={{
+                                  gridTemplateColumns: showDeltaCol ? '1fr auto 38px 46px' : '1fr auto 42px',
+                                  borderTop: '1px solid var(--dq-border-1)',
+                                }}>
+                                <span className="text-[12px]" style={{ color: 'var(--dq-text-3)' }}>{et}</span>
                                 <span className="text-right font-mono text-[12px]" style={{ color: 'var(--dq-text-5)' }}>
                                   {e.totalFoundInDb}/{e.totalUniqueInApi}
                                 </span>
@@ -254,13 +319,19 @@ export function ScraperGrid() {
                                   style={{ color: pctColor(pct) }}>
                                   {pct}%
                                 </span>
+                                {showDeltaCol && (
+                                  <span className="text-right font-mono text-[11px] font-medium"
+                                    style={{ color: d ? deltaColor(d.deltaPercent) : 'var(--dq-text-8)' }}>
+                                    {d ? fmtDelta(d.deltaPercent) : '—'}
+                                  </span>
+                                )}
                               </div>
                             )
                           })}
                         </div>
                       )}
 
-                      {/* AI summary */}
+                      {/* Field check summary */}
                       {hasAi && (
                         <div className="flex items-center gap-[12px] pt-[1px] font-mono text-[11px]">
                           <span style={{ color: 'var(--dq-green)' }}>● {verdicts.Same ?? 0} Same</span>
