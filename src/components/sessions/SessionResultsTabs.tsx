@@ -20,16 +20,34 @@ function pctColor(p: number) {
   return p >= 98 ? 'var(--dq-green)' : p >= 94 ? 'var(--dq-amber)' : 'var(--dq-red)'
 }
 
+function deltaColor(pct: number) {
+  const abs = Math.abs(pct)
+  if (abs <= 10) return 'var(--dq-green)'
+  if (abs <= 25) return 'var(--dq-amber)'
+  return 'var(--dq-red)'
+}
+
+function fmtDelta(pct: number) {
+  const sign = pct > 0 ? '+' : ''
+  return `${sign}${pct.toFixed(1)}%`
+}
+
 export function SessionResultsTabs({ session }: Props) {
   const checks   = new Set(session.checksEnabled)
   const sections = ENTITY_ORDER.filter((et) => session.entityTypes.includes(et))
 
   const showApiDb = checks.has('api_db')
   const showAi    = checks.has('ai') || checks.has('api_db')
+  const showDelta = checks.has('delta')
 
-  const hasSummaryData =
-    (showApiDb && session.entityCheckSummaries.length > 0) ||
-    (showAi    && session.aiComparisons.length > 0)
+  const panelApiDb = showApiDb && session.entityCheckSummaries.length > 0
+  const panelAi    = showAi    && session.aiComparisons.length > 0
+  const panelDelta = showDelta && session.sessionDeltaChecks.length > 0
+
+  const activePanels = [panelApiDb, panelAi, panelDelta].filter(Boolean).length
+  const hasSummaryData = activePanels > 0
+
+  const deltaRef = session.sessionDeltaChecks[0]
 
   return (
     <div className="flex flex-col">
@@ -39,13 +57,13 @@ export function SessionResultsTabs({ session }: Props) {
           style={{
             border:              '1px solid var(--dq-border-2)',
             display:             'grid',
-            gridTemplateColumns: showApiDb && showAi && session.aiComparisons.length > 0 ? '1fr 1fr' : '1fr',
+            gridTemplateColumns: Array(activePanels).fill('1fr').join(' '),
           }}>
 
           {/* API → DB panel */}
-          {showApiDb && session.entityCheckSummaries.length > 0 && (
+          {panelApiDb && (
             <div className="p-[16px_18px]"
-              style={{ borderRight: showAi && session.aiComparisons.length > 0 ? '1px solid var(--dq-border-2)' : 'none' }}>
+              style={{ borderRight: panelAi || panelDelta ? '1px solid var(--dq-border-2)' : 'none' }}>
               <div className="mb-[12px] font-mono text-[11px] font-semibold"
                 style={{ color: 'var(--dq-text-5)', letterSpacing: '0.06em' }}>
                 API → DB
@@ -88,9 +106,10 @@ export function SessionResultsTabs({ session }: Props) {
             </div>
           )}
 
-          {/* AI Comparison panel */}
-          {showAi && session.aiComparisons.length > 0 && (
-            <div className="p-[16px_18px]">
+          {/* Field Check panel */}
+          {panelAi && (
+            <div className="p-[16px_18px]"
+              style={{ borderRight: panelDelta ? '1px solid var(--dq-border-2)' : 'none' }}>
               <div className="mb-[12px] font-mono text-[11px] font-semibold"
                 style={{ color: 'var(--dq-text-5)', letterSpacing: '0.06em' }}>
                 FIELD CHECK
@@ -124,6 +143,48 @@ export function SessionResultsTabs({ session }: Props) {
                         <td className="py-[5px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-red)' }}>
                           {(cnt.Different ?? 0) + (cnt.SomewhatSame ?? 0) || dash}
                         </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {/* Delta panel */}
+          {panelDelta && deltaRef && (
+            <div className="p-[16px_18px]">
+              <div className="mb-[12px] font-mono text-[11px] font-semibold"
+                style={{ color: 'var(--dq-text-5)', letterSpacing: '0.06em' }}>
+                DELTA
+              </div>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {[
+                      { key: 'ENTITY', right: false },
+                      { key: `#${deltaRef.previousScrapersSessionId}`, right: true },
+                      { key: `#${deltaRef.currentScrapersSessionId}`,  right: true },
+                      { key: 'DELTA', right: true },
+                    ].map(({ key, right }) => (
+                      <th key={key}
+                        className={`pb-[8px] font-mono text-[10px] font-medium ${right ? 'text-right' : 'text-left'}`}
+                        style={{ color: 'var(--dq-text-8)', letterSpacing: '0.04em' }}>
+                        {key}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sections.map((et) => {
+                    const d = session.sessionDeltaChecks.find((x) => x.entityType === et)
+                    if (!d) return null
+                    const color = deltaColor(d.deltaPercent)
+                    return (
+                      <tr key={et} style={{ borderBottom: '1px solid var(--dq-border-1)' }}>
+                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: 'var(--dq-text-2)' }}>{et}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-text-6)' }}>{d.previousCount}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-text-6)' }}>{d.currentCount}</td>
+                        <td className="py-[5px] text-right font-mono text-[12px] font-medium" style={{ color }}>{fmtDelta(d.deltaPercent)}</td>
                       </tr>
                     )
                   })}
