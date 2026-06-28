@@ -93,12 +93,12 @@ export function SessionResultsTabs({ session }: Props) {
             <div className="p-[16px_18px]">
               <div className="mb-[12px] font-mono text-[11px] font-semibold"
                 style={{ color: 'var(--dq-text-5)', letterSpacing: '0.06em' }}>
-                AI COMPARISON
+                FIELD CHECK
               </div>
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    {['ENTITY', 'SAME', 'SOMEWHAT SAME', 'DIFFERENT'].map((h) => (
+                    {['ENTITY', 'SAME', 'DIFFERENT'].map((h) => (
                       <th key={h}
                         className={`pb-[8px] font-mono text-[10px] font-medium ${h !== 'ENTITY' ? 'text-right' : 'text-left'}`}
                         style={{ color: 'var(--dq-text-8)', letterSpacing: '0.04em' }}>
@@ -121,11 +121,8 @@ export function SessionResultsTabs({ session }: Props) {
                         <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-green)' }}>
                           {cnt.Same ?? dash}
                         </td>
-                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-amber)' }}>
-                          {cnt.SomewhatSame ?? dash}
-                        </td>
                         <td className="py-[5px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-red)' }}>
-                          {cnt.Different ?? dash}
+                          {(cnt.Different ?? 0) + (cnt.SomewhatSame ?? 0) || dash}
                         </td>
                       </tr>
                     )
@@ -163,7 +160,7 @@ export function SessionResultsTabs({ session }: Props) {
                 <span className="font-mono text-[11px]" style={{ color: ptxt }}>{pct}%</span>
               )}
               {aiCount > 0 && (
-                <span className="font-mono text-[11px]" style={{ color: 'var(--dq-text-7)' }}>· {aiCount} AI</span>
+                <span className="font-mono text-[11px]" style={{ color: 'var(--dq-text-7)' }}>· {aiCount} compared</span>
               )}
             </a>
           )
@@ -200,7 +197,7 @@ export function SessionResultsTabs({ session }: Props) {
                 )}
                 {aiComparisons.length > 0 && (
                   <span className="font-mono text-[12px]" style={{ color: 'var(--dq-text-7)' }}>
-                    · {aiComparisons.length} AI
+                    · {aiComparisons.length} compared
                   </span>
                 )}
                 {aiDiff > 0 && (
@@ -233,7 +230,7 @@ export function SessionResultsTabs({ session }: Props) {
                 <div className="px-[18px] py-[14px]">
                   <div className="mb-[10px] font-mono text-[10.5px] font-semibold"
                     style={{ color: 'var(--dq-text-6)', letterSpacing: '0.06em' }}>
-                    AI COMPARISON
+                    FIELD CHECK
                   </div>
                   <AiResultsTab comparisons={aiComparisons} appId={session.appId} />
                 </div>

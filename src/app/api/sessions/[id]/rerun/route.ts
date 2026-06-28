@@ -23,7 +23,6 @@ export async function POST(
     polygonIds:        session.polygonIds,
     entityTypes:       session.entityTypes as EntityType[],
     checksEnabled:     session.checksEnabled as CheckType[],
-    aiSampleSize:      session.aiSampleSize,
   })
 
   return NextResponse.json({ sessionId: newId })

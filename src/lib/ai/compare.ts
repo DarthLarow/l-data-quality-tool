@@ -1,3 +1,5 @@
+// @deprecated — replaced by src/lib/checks/field-compare.ts (deterministic comparison).
+// Kept for reference; may be reintroduced for deep AI analysis in future.
 import fs from 'fs'
 import path from 'path'
 import { aiClient } from './client'
@@ -7,7 +9,7 @@ import type { EntityType, AiVerdict } from '@/types'
 
 type Obj = Record<string, unknown>
 
-const VALID_VERDICTS: AiVerdict[] = ['Same', 'SomewhatSame', 'Different']
+const VALID_VERDICTS: AiVerdict[] = ['Same', 'Different']
 
 const GENERIC_PROMPT = `You are comparing two snapshots of the same entity from a mobility scraper system.
 One is from the live API, one is from the database (captured at a different time).
@@ -22,7 +24,7 @@ Static fields (must match): IDs, names, model info, pricing, zone boundaries.
 {comparisonTable}
 
 Respond ONLY with valid JSON:
-{"verdict": "Same|SomewhatSame|Different", "explanation": "<one sentence>"}`
+{"verdict": "Same|Different", "explanation": "<one sentence>"}`
 
 function loadPromptTemplate(entityType: string): string {
   const filePath = path.join(process.cwd(), 'docs/ai-comparison-prompts', `${entityType}.md`)

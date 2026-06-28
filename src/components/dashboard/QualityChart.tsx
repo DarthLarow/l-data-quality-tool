@@ -6,9 +6,8 @@ import {
 import type { AiComparison } from '@/generated/prisma/client'
 
 const VERDICTS = [
-  { key: 'Same',         color: '#22c55e', label: 'Same' },
-  { key: 'SomewhatSame', color: '#f59e0b', label: 'Somewhat Same' },
-  { key: 'Different',    color: '#ef4444', label: 'Different' },
+  { key: 'Same',      color: '#22c55e', label: 'Same'      },
+  { key: 'Different', color: '#ef4444', label: 'Different' },
 ] as const
 
 interface Props {
@@ -21,15 +20,14 @@ export function QualityChart({ aiComparisons, sessionDates }: Props) {
     const comps = aiComparisons.filter((c) => c.checkSessionId === id)
     return {
       date,
-      Same:         comps.filter((c) => c.verdict === 'Same').length,
-      SomewhatSame: comps.filter((c) => c.verdict === 'SomewhatSame').length,
-      Different:    comps.filter((c) => c.verdict === 'Different').length,
+      Same:      comps.filter((c) => c.verdict === 'Same').length,
+      Different: comps.filter((c) => c.verdict === 'Different' || c.verdict === 'SomewhatSame').length,
     }
   })
 
   return (
     <div>
-      <p className="mb-1 text-xs font-semibold text-muted-foreground">AI Quality</p>
+      <p className="mb-1 text-xs font-semibold text-muted-foreground">Field Quality</p>
       <ResponsiveContainer width="100%" height={160}>
         <BarChart
           data={data}

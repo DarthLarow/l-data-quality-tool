@@ -22,7 +22,7 @@ describe('compareEntities', () => {
     const { compareEntities } = await import('@/lib/ai/compare')
     const api = { id: '123', name: 'Scooter A', lat: 50.1, lng: 30.2 }
     const db  = { id: '123', name: 'Scooter A', lat: 50.11, lng: 30.21 }
-    const result = await compareEntities(api, db, 'dockless')
+    const result = await compareEntities(api, db, 'dockless', 'ario')
     expect(result.verdict).toBe<AiVerdict>('Same')
     expect(typeof result.explanation).toBe('string')
   })

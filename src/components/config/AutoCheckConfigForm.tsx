@@ -61,7 +61,6 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
   )
   const [polygonStrategy, setPolygonStrategy] = useState(existingConfig?.polygonStrategy ?? 'random')
   const [polygonCity,     setPolygonCity]     = useState(existingConfig?.polygonCity ?? '')
-  const [aiSampleSize,    setAiSampleSize]    = useState(existingConfig?.aiSampleSize ?? 5)
   const [isActive,        setIsActive]        = useState(existingConfig?.isActive ?? true)
   const [saving,          setSaving]          = useState(false)
 
@@ -85,7 +84,6 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
         environment,
         entityTypes,
         checksEnabled: checks,
-        aiSampleSize,
         polygonStrategy,
         polygonCity: polygonCity || null,
         isActive,
@@ -215,25 +213,6 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
               </PillToggle>
             ))}
           </div>
-        </div>
-
-        {/* AI Sample Size */}
-        <div>
-          <FieldLabel>AI Sample Size</FieldLabel>
-          <input
-            type="number"
-            min={0}
-            max={20}
-            value={aiSampleSize}
-            onChange={(e) => setAiSampleSize(Number(e.target.value))}
-            className="rounded-[6px] bg-transparent px-[10px] py-[6px] text-center font-mono text-[13px] outline-none"
-            style={{
-              width:      '80px',
-              border:     '1px solid var(--dq-border-3)',
-              background: 'var(--dq-bg-2)',
-              color:      'var(--dq-text-1)',
-            }}
-          />
         </div>
 
         {/* Active toggle */}

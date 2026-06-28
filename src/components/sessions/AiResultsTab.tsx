@@ -180,9 +180,8 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
 
 function VerdictBadge({ verdict }: { verdict: string }) {
   const STYLES: Record<string, { color: string; bg: string }> = {
-    Same:         { color: 'var(--dq-green)', bg: 'var(--dq-green-bg)' },
-    SomewhatSame: { color: 'var(--dq-amber)', bg: 'var(--dq-amber-bg)' },
-    Different:    { color: 'var(--dq-red)',   bg: 'var(--dq-red-bg)'   },
+    Same:      { color: 'var(--dq-green)', bg: 'var(--dq-green-bg)' },
+    Different: { color: 'var(--dq-red)',   bg: 'var(--dq-red-bg)'   },
   }
   const s = STYLES[verdict] ?? { color: 'var(--dq-text-4)', bg: 'var(--dq-border-1)' }
   return (
@@ -196,18 +195,16 @@ function VerdictBadge({ verdict }: { verdict: string }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 const VERDICT_FILTERS = [
-  { value: 'all',          label: 'All'           },
-  { value: 'Same',         label: 'Same'          },
-  { value: 'SomewhatSame', label: 'Somewhat same' },
-  { value: 'Different',    label: 'Different'     },
+  { value: 'all',       label: 'All'       },
+  { value: 'Same',      label: 'Same'      },
+  { value: 'Different', label: 'Different' },
 ] as const
 
 type VerdictFilter = typeof VERDICT_FILTERS[number]['value']
 
 const VERDICT_COLOR: Record<string, string> = {
-  Same:         'var(--dq-green)',
-  SomewhatSame: 'var(--dq-amber)',
-  Different:    'var(--dq-red)',
+  Same:      'var(--dq-green)',
+  Different: 'var(--dq-red)',
 }
 
 interface Props { comparisons: AiComparison[]; appId: string }

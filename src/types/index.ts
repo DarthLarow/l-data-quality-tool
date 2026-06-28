@@ -2,7 +2,7 @@ export type EntityType = 'dockless' | 'docked' | 'pricings' | 'zones'
 export type CheckType = 'api_db' | 'ai' | 'delta'
 export type Environment = 'staging' | 'production'
 export type DeltaFlag = 'ok' | 'warning' | 'critical'
-export type AiVerdict = 'Same' | 'SomewhatSame' | 'Different'
+export type AiVerdict = 'Same' | 'Different'
 export type PolygonStrategy = 'random' | 'by_id' | 'by_city_all' | 'by_city_random'
 export type CheckStatus = 'running' | 'completed' | 'failed'
 
@@ -57,6 +57,5 @@ export interface CheckSessionInput {
   polygonIds: string[]
   entityTypes: EntityType[]
   checksEnabled: CheckType[]
-  aiSampleSize: number
   previousScrapersSessionId?: number
 }

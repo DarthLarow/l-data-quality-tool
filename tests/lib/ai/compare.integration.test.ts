@@ -8,8 +8,8 @@ describe('compareEntities — real AI gateway', () => {
     const { compareEntities } = await import('@/lib/ai/compare')
     const api = { vehicle_id: 'LIM-001', battery: 82, location_lat: 50.45, location_lng: 30.52, name: 'Lime-S' }
     const db  = { vehicle_id: 'LIM-001', battery: 79, location_lat: 50.451, location_lng: 30.521, name: 'Lime-S' }
-    const result = await compareEntities(api, db, 'dockless')
-    expect(['Same', 'SomewhatSame', 'Different']).toContain(result.verdict)
+    const result = await compareEntities(api, db, 'dockless', 'ario')
+    expect(['Same', 'Different']).toContain(result.verdict)
     expect(result.explanation.length).toBeGreaterThan(5)
     console.log('AI verdict:', result.verdict, '|', result.explanation)
   }, 30_000)

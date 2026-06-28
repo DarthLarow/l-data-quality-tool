@@ -12,7 +12,7 @@ interface ScraperOption {
 
 const CHECK_DEFS: { ct: CheckType; title: string; desc: string }[] = [
   { ct: 'api_db', title: 'API → DB',       desc: 'Each API entity searched in scrapers_db by ID' },
-  { ct: 'ai',     title: 'AI Comparison',   desc: 'AI evaluates data quality between API and DB snapshots' },
+  { ct: 'ai',     title: 'Field Check',      desc: 'Compares all matched entities field-by-field using mapping rules' },
   { ct: 'delta',  title: 'Delta',           desc: 'Detects anomalous count changes vs. previous session' },
 ]
 
@@ -104,8 +104,6 @@ export function CheckForm() {
   const [polygonCity,               setPolygonCity]     = useState('')
   const [selectedEntityTypes,       setEntityTypes]     = useState<EntityType[]>([])
   const [checksEnabled,             setChecksEnabled]   = useState<CheckType[]>(['api_db', 'delta'])
-  const [aiSampleSize,              setAiSampleSize]    = useState(5)
-
   const selectedScraper = scrapers.find((s) => s.appId === appId)
 
   useEffect(() => {
@@ -137,7 +135,6 @@ export function CheckForm() {
       polygonIds,
       entityTypes:               selectedEntityTypes,
       checksEnabled,
-      aiSampleSize,
       previousScrapersSessionId: previousScrapersSessionId
         ? parseInt(previousScrapersSessionId, 10)
         : undefined,
@@ -342,68 +339,6 @@ export function CheckForm() {
           ))}
         </div>
       </div>
-
-      {/* ── AI Sample Size ──────────────────────────────────────── */}
-      {checksEnabled.includes('ai') && (
-        <div>
-          <FieldLabel>AI Sample Size</FieldLabel>
-          <div className="rounded-[8px] p-[14px_16px]"
-            style={{
-              background: 'var(--dq-bg-4)',
-              border:     '1px solid var(--dq-border-2)',
-              maxWidth:   '280px',
-            }}>
-            <div className="flex items-center gap-[14px]">
-              <button
-                type="button"
-                onClick={() => setAiSampleSize((n) => Math.max(1, n - 1))}
-                className="flex shrink-0 items-center justify-center rounded-[6px] text-[16px] leading-none"
-                style={{
-                  width:      '26px',
-                  height:     '26px',
-                  border:     '1px solid var(--dq-border-4)',
-                  color:      'var(--dq-text-3)',
-                  cursor:     'pointer',
-                  background: 'transparent',
-                }}>
-                −
-              </button>
-              <span className="min-w-[28px] text-center font-mono text-[15px] font-semibold"
-                style={{ color: 'var(--dq-text-1)' }}>
-                {aiSampleSize}
-              </span>
-              <button
-                type="button"
-                onClick={() => setAiSampleSize((n) => Math.min(20, n + 1))}
-                className="flex shrink-0 items-center justify-center rounded-[6px] text-[14px] leading-none"
-                style={{
-                  width:      '26px',
-                  height:     '26px',
-                  border:     '1px solid var(--dq-border-4)',
-                  color:      'var(--dq-text-3)',
-                  cursor:     'pointer',
-                  background: 'transparent',
-                }}>
-                +
-              </button>
-            </div>
-
-            {/* Progress bar */}
-            <div className="mt-[10px] overflow-hidden rounded-full"
-              style={{ height: '4px', background: 'var(--dq-border-2)' }}>
-              <div className="h-full rounded-full transition-all duration-150"
-                style={{ width: `${(aiSampleSize / 20) * 100}%`, background: 'var(--dq-btn-bg)' }} />
-            </div>
-
-            {/* Range labels */}
-            <div className="mt-[5px] flex justify-between font-mono text-[10px]"
-              style={{ color: 'var(--dq-text-8)' }}>
-              <span>1</span>
-              <span>20</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Previous Session ID ─────────────────────────────────── */}
       {checksEnabled.includes('delta') && (

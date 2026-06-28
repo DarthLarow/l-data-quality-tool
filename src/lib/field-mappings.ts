@@ -1,5 +1,10 @@
 type ApiSnapshot = Record<string, unknown>
 
+export type DynamicThreshold =
+  | { type: 'distance_m'; maxMeters: number }
+  | { type: 'absolute';   maxDelta:  number }
+  | { type: 'percent';    maxPct:    number }
+
 export type MappingRow = {
   apiKey?:    string
   dbKey:      string
@@ -7,6 +12,8 @@ export type MappingRow = {
   note?:      string
   constant?:  unknown
   dynamic?:   true              // battery, coordinates — expected to change between captures
+  threshold?: DynamicThreshold  // tolerance for dynamic fields; no threshold = field is ignored
+  latPair?:   string            // partner dbKey for distance_m (lat row sets this to the lng dbKey)
   onlyWhen?:  (api: ApiSnapshot) => boolean  // sub-type filter: row included only when predicate is true
 }
 
@@ -54,9 +61,9 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
       { apiKey: 'stickerid',    dbKey: 'name'                                                                                             },
       { apiKey: 'type',         dbKey: 'category',      transform: arioCategory,  note: '1→"Ario TS 1.0", 2→"E-bike", 3→"Ario TS 1.5"'  },
       { apiKey: 'helmetStatus', dbKey: 'helmet_status', transform: helmetStatus,  note: '0→"absent", 1→"attached"'                        },
-      { apiKey: 'battery',      dbKey: 'battery',       dynamic: true                                                                     },
-      { apiKey: 'latitude',     dbKey: 'location_lat',  dynamic: true                                                                     },
-      { apiKey: 'longitude',    dbKey: 'location_lng',  dynamic: true                                                                     },
+      { apiKey: 'battery',      dbKey: 'battery',       dynamic: true                                                                                                              },
+      { apiKey: 'latitude',     dbKey: 'location_lat',  dynamic: true, threshold: { type: 'distance_m', maxMeters: 5000 }, latPair: 'location_lng' },
+      { apiKey: 'longitude',    dbKey: 'location_lng',  dynamic: true                                                                                                              },
     ],
 
     // POST /app/api/getoutofoalist → zones

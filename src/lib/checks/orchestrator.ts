@@ -1,14 +1,10 @@
 import { prisma } from '@/lib/quality-db'
 import { runApiDbCheck } from './api-db-check'
 import { runDeltaCheck } from './delta-check'
-import { compareEntities } from '@/lib/ai/compare'
+import { compareEntityFields } from './field-compare'
 import { findEntitiesByIds, pingScrapersDb } from '@/lib/scrapers-db'
 import { adapterRegistry } from './adapters/scraper-adapter'
 import type { CheckSessionInput, EntityType } from '@/types'
-
-function sampleRandom<T>(arr: T[], n: number): T[] {
-  return [...arr].sort(() => Math.random() - 0.5).slice(0, n)
-}
 
 export async function runCheckSession(input: CheckSessionInput): Promise<string> {
   try {
@@ -25,18 +21,17 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
       polygonIds:        input.polygonIds,
       entityTypes:       input.entityTypes,
       checksEnabled:     input.checksEnabled,
-      aiSampleSize:      input.aiSampleSize,
+      aiSampleSize:      0, // field kept in DB schema for backwards compat; field compare has no limit
       status:            'running',
       triggeredBy:       'manual',
     },
   })
 
   try {
-    const checks = new Set(input.checksEnabled)
+    const checks  = new Set(input.checksEnabled)
     const adapter = adapterRegistry.get(input.appId)
 
     for (const entityType of input.entityTypes as EntityType[]) {
-      // API fetch is needed for both api_db completeness check and ai comparison
       if (checks.has('api_db') || checks.has('ai')) {
         if (!adapter) throw new Error(`No adapter registered for appId: ${input.appId}`)
 
@@ -67,17 +62,17 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
           }
         }
 
-        if (checks.has('ai') && input.aiSampleSize > 0) {
-          const allFoundIds = result.polygonResults.flatMap((p) => p.foundInDb)
-          const sampleIds = sampleRandom([...new Set(allFoundIds)], input.aiSampleSize)
+        // Field comparison — all matched entities, no sampling limit
+        if (checks.has('ai')) {
+          const allFoundIds = [...new Set(result.polygonResults.flatMap((p) => p.foundInDb))]
+          const dbMap       = await findEntitiesByIds(allFoundIds, entityType, input.appId)
 
-          for (const entityId of sampleIds) {
-            const dbMap = await findEntitiesByIds([entityId], entityType, input.appId)
-            const dbSnapshot = dbMap.get(entityId)
+          for (const entityId of allFoundIds) {
+            const dbSnapshot  = dbMap.get(entityId)
             if (!dbSnapshot) continue
 
-            const apiSnapshot = result.apiEntityMap.get(entityId) ?? { id: entityId }
-            const comparison  = await compareEntities(apiSnapshot, dbSnapshot, entityType, input.appId)
+            const apiSnapshot  = result.apiEntityMap.get(entityId) ?? { id: entityId }
+            const comparison   = compareEntityFields(apiSnapshot, dbSnapshot, entityType, input.appId)
 
             await prisma.aiComparison.create({
               data: {

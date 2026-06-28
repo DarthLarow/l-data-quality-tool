@@ -272,9 +272,8 @@ export function ScraperGrid() {
                       {/* AI summary */}
                       {hasAi && (
                         <div className="flex items-center gap-[12px] pt-[1px] font-mono text-[11px]">
-                          <span style={{ color: 'var(--dq-green)' }}>● {verdicts.Same         ?? 0} Same</span>
-                          <span style={{ color: 'var(--dq-amber)' }}>● {verdicts.SomewhatSame ?? 0} Somewhat same</span>
-                          <span style={{ color: 'var(--dq-red)' }}>● {verdicts.Different    ?? 0} Different</span>
+                          <span style={{ color: 'var(--dq-green)' }}>● {verdicts.Same ?? 0} Same</span>
+                          <span style={{ color: 'var(--dq-red)' }}>● {(verdicts.Different ?? 0) + (verdicts.SomewhatSame ?? 0)} Different</span>
                         </div>
                       )}
                     </>

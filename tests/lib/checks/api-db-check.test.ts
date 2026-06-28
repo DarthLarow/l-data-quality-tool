@@ -21,7 +21,6 @@ const baseInput: CheckSessionInput = {
   polygonIds: ['poly-1'],
   entityTypes: ['dockless'],
   checksEnabled: ['api_db'],
-  aiSampleSize: 5,
 }
 
 describe('runApiDbCheck', () => {
