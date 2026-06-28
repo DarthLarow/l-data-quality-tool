@@ -59,23 +59,13 @@ export async function countEntitiesForSession(
 }
 
 export async function findPreviousScrapersSession(
-  appId: string,
   currentSessionId: number,
 ): Promise<number | null> {
   const rows = await scrapersQuery<{ session_id: string }>(
-    `SELECT MAX(ct.session_id) AS session_id
-     FROM collection_tasks ct
-     WHERE ct.session_id < $1
-       AND ct.id IN (
-         SELECT collection_task_id FROM dockless_fleets WHERE provider = $2
-         UNION
-         SELECT collection_task_id FROM docked_fleets    WHERE provider = $2
-         UNION
-         SELECT collection_task_id FROM pricings         WHERE provider = $2
-         UNION
-         SELECT collection_task_id FROM zones            WHERE provider = $2
-       )`,
-    [currentSessionId, appId],
+    `SELECT MAX(session_id) AS session_id
+     FROM collection_tasks
+     WHERE session_id < $1`,
+    [currentSessionId],
   )
   const id = rows[0]?.session_id
   return id ? parseInt(id, 10) : null

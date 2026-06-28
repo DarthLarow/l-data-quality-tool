@@ -35,7 +35,7 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
     const previousScrapersSessionId =
       input.previousScrapersSessionId ??
       (checks.has('delta')
-        ? (await findPreviousScrapersSession(input.appId, input.scrapersSessionId)) ?? undefined
+        ? (await findPreviousScrapersSession(input.scrapersSessionId)) ?? undefined
         : undefined)
 
     for (const entityType of input.entityTypes as EntityType[]) {
