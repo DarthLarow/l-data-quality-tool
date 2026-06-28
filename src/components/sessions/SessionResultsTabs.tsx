@@ -139,7 +139,7 @@ export function SessionResultsTabs({ session }: Props) {
         style={{ background: 'var(--dq-bg-1)', borderBottom: '1px solid var(--dq-border-1)' }}>
         {sections.map((et) => {
           const summary = session.entityCheckSummaries.find((s) => s.entityType === et)
-          const aiCount = session.aiComparisons.filter((a) => a.entityType === et).length
+          const aiDiffCount = session.aiComparisons.filter((a) => a.entityType === et && (a.verdict === 'Different' || a.verdict === 'SomewhatSame')).length
           const pct = summary && summary.totalUniqueInApi > 0
             ? Math.round((summary.totalFoundInDb / summary.totalUniqueInApi) * 100)
             : null
@@ -159,8 +159,8 @@ export function SessionResultsTabs({ session }: Props) {
               {pct !== null && (
                 <span className="font-mono text-[11px]" style={{ color: ptxt }}>{pct}%</span>
               )}
-              {aiCount > 0 && (
-                <span className="font-mono text-[11px]" style={{ color: 'var(--dq-text-7)' }}>· {aiCount} compared</span>
+              {aiDiffCount > 0 && (
+                <span className="font-mono text-[11px]" style={{ color: 'var(--dq-red)' }}>· {aiDiffCount} different</span>
               )}
             </a>
           )
