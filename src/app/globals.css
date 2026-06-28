@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(.light *));
 
 @theme inline {
   --color-background: var(--background);
@@ -81,66 +82,217 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Semantic status colors — dark defaults (backward compat) */
+  --status-ok:           #3fb950;
+  --status-ok-bg:        rgba(63, 185, 80, 0.12);
+  --status-warning:      #d29922;
+  --status-warning-bg:   rgba(210, 153, 34, 0.12);
+  --status-critical:     #f85149;
+  --status-critical-bg:  rgba(248, 81, 73, 0.12);
+  --status-running:      #4493f8;
+  --status-running-bg:   rgba(68, 147, 248, 0.12);
+
+  /* dqpulse animation color — dark default */
+  --dq-pulse-color: rgba(68, 147, 248, 0.55);
+  --dq-pulse-end:   rgba(68, 147, 248, 0);
 }
 
+/* ── Dark theme ──────────────────────────────────────────────── */
 .dark {
-  /* ── Core surfaces (from design) ─────────────────────────── */
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --card: #0f0f0f;
-  --card-foreground: #ededed;
-  --popover: #111111;
-  --popover-foreground: #ededed;
-  --primary: #ededed;
-  --primary-foreground: #0a0a0a;
-  --secondary: #1a1a1a;
+  /* Shadcn/Tailwind surface tokens */
+  --background:           #0a0a0a;
+  --foreground:           #ededed;
+  --card:                 #0f0f0f;
+  --card-foreground:      #ededed;
+  --popover:              #111111;
+  --popover-foreground:   #ededed;
+  --primary:              #ededed;
+  --primary-foreground:   #0a0a0a;
+  --secondary:            #1a1a1a;
   --secondary-foreground: #cfcfcf;
-  --muted: #141414;
-  --muted-foreground: #6b6b6b;
-  --accent: #1a1a1a;
-  --accent-foreground: #ededed;
-  --destructive: #f85149;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.1);
-  --ring: rgba(255, 255, 255, 0.2);
-  /* ── Chart colors mapped to status semantics ─────────────── */
-  --chart-1: #3fb950;
-  --chart-2: #4493f8;
-  --chart-3: #d29922;
-  --chart-4: #f85149;
-  --chart-5: #a371f7;
-  /* ── Sidebar ─────────────────────────────────────────────── */
-  --sidebar: #0c0c0c;
-  --sidebar-foreground: #ededed;
-  --sidebar-primary: #ededed;
+  --muted:                #141414;
+  --muted-foreground:     #6b6b6b;
+  --accent:               #1a1a1a;
+  --accent-foreground:    #ededed;
+  --destructive:          #f85149;
+  --border:               rgba(255, 255, 255, 0.08);
+  --input:                rgba(255, 255, 255, 0.1);
+  --ring:                 rgba(255, 255, 255, 0.2);
+  --chart-1:              #3fb950;
+  --chart-2:              #4493f8;
+  --chart-3:              #d29922;
+  --chart-4:              #f85149;
+  --chart-5:              #a371f7;
+  --sidebar:              #0c0c0c;
+  --sidebar-foreground:   #ededed;
+  --sidebar-primary:      #ededed;
   --sidebar-primary-foreground: #0a0a0a;
-  --sidebar-accent: rgba(255, 255, 255, 0.07);
+  --sidebar-accent:       rgba(255, 255, 255, 0.07);
   --sidebar-accent-foreground: #ededed;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-ring: rgba(255, 255, 255, 0.2);
+  --sidebar-border:       rgba(255, 255, 255, 0.07);
+  --sidebar-ring:         rgba(255, 255, 255, 0.2);
+
+  /* DQ design tokens — backgrounds */
+  --dq-bg-1:     #0a0a0a;   /* app shell, sticky nav */
+  --dq-bg-2:     #080808;   /* content area, input bg */
+  --dq-bg-3:     #0f0f0f;   /* cards, nav pills */
+  --dq-bg-4:     #0d0d0d;   /* inline panels, section headers */
+  --dq-bg-5:     #0c0c0c;   /* sidebar */
+
+  /* DQ design tokens — text hierarchy */
+  --dq-text-1:   #ededed;   /* primary */
+  --dq-text-2:   #cfcfcf;   /* secondary */
+  --dq-text-3:   #bdbdbd;   /* entity names, card body */
+  --dq-text-4:   #9a9a9a;   /* field labels */
+  --dq-text-5:   #8a8a8a;   /* muted mono */
+  --dq-text-6:   #7a7a7a;   /* section sub-labels */
+  --dq-text-7:   #6b6b6b;   /* dim */
+  --dq-text-8:   #5e5e5e;   /* separators, appId */
+
+  /* DQ design tokens — borders */
+  --dq-border-1: rgba(255, 255, 255, 0.07);  /* page / sidebar */
+  --dq-border-2: rgba(255, 255, 255, 0.08);  /* card */
+  --dq-border-3: rgba(255, 255, 255, 0.1);   /* input / button */
+  --dq-border-4: rgba(255, 255, 255, 0.13);  /* strong */
+
+  /* DQ design tokens — status colors */
+  --dq-green:    #3fb950;
+  --dq-amber:    #d29922;
+  --dq-red:      #f85149;
+  --dq-blue:     #4493f8;
+  --dq-green-bg: rgba(63, 185, 80, 0.12);
+  --dq-amber-bg: rgba(210, 153, 34, 0.12);
+  --dq-red-bg:   rgba(248, 81, 73, 0.08);
+  --dq-blue-bg:  rgba(68, 147, 248, 0.12);
+
+  /* DQ design tokens — primary button */
+  --dq-btn-bg:   #ededed;
+  --dq-btn-fg:   #0a0a0a;
+
+  /* DQ design tokens — logo mark */
+  --dq-logo-bg:  #ededed;
+  --dq-logo-fg:  #0a0a0a;
+
+  /* DQ design tokens — strong active borders (pill toggles, checkboxes) */
+  --dq-border-strong: rgba(255, 255, 255, 0.22);
+
+  /* Status variables (keep in sync with --dq-*) */
+  --status-ok:           #3fb950;
+  --status-ok-bg:        rgba(63, 185, 80, 0.12);
+  --status-warning:      #d29922;
+  --status-warning-bg:   rgba(210, 153, 34, 0.12);
+  --status-critical:     #f85149;
+  --status-critical-bg:  rgba(248, 81, 73, 0.12);
+  --status-running:      #4493f8;
+  --status-running-bg:   rgba(68, 147, 248, 0.12);
+
+  --dq-pulse-color: rgba(68, 147, 248, 0.55);
+  --dq-pulse-end:   rgba(68, 147, 248, 0);
 }
 
-/* Semantic status colors — exact hex from design */
-:root {
-  --status-ok: #3fb950;
-  --status-ok-bg: rgba(63, 185, 80, 0.12);
-  --status-warning: #d29922;
-  --status-warning-bg: rgba(210, 153, 34, 0.12);
-  --status-critical: #f85149;
-  --status-critical-bg: rgba(248, 81, 73, 0.12);
-  --status-running: #4493f8;
-  --status-running-bg: rgba(68, 147, 248, 0.12);
+/* ── Light theme ─────────────────────────────────────────────── */
+.light {
+  /* Shadcn/Tailwind surface tokens */
+  --background:           #ffffff;
+  --foreground:           #18181b;
+  --card:                 #ffffff;
+  --card-foreground:      #18181b;
+  --popover:              #ffffff;
+  --popover-foreground:   #18181b;
+  --primary:              #18181b;
+  --primary-foreground:   #ffffff;
+  --secondary:            #f4f4f5;
+  --secondary-foreground: #27272a;
+  --muted:                #f4f4f5;
+  --muted-foreground:     #71717a;
+  --accent:               #f4f4f5;
+  --accent-foreground:    #18181b;
+  --destructive:          #cf222e;
+  --border:               rgba(0, 0, 0, 0.08);
+  --input:                rgba(0, 0, 0, 0.1);
+  --ring:                 rgba(0, 0, 0, 0.2);
+  --chart-1:              #1a7f37;
+  --chart-2:              #0969da;
+  --chart-3:              #9a6700;
+  --chart-4:              #cf222e;
+  --chart-5:              #8250df;
+  --sidebar:              #fafafa;
+  --sidebar-foreground:   #18181b;
+  --sidebar-primary:      #18181b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent:       rgba(0, 0, 0, 0.07);
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border:       rgba(0, 0, 0, 0.07);
+  --sidebar-ring:         rgba(0, 0, 0, 0.2);
+
+  /* DQ design tokens — backgrounds */
+  --dq-bg-1:     #ffffff;   /* app shell, sticky nav */
+  --dq-bg-2:     #f4f4f5;   /* content area, input bg */
+  --dq-bg-3:     #ffffff;   /* cards, nav pills */
+  --dq-bg-4:     #fafafa;   /* inline panels, section headers */
+  --dq-bg-5:     #fafafa;   /* sidebar */
+
+  /* DQ design tokens — text hierarchy */
+  --dq-text-1:   #18181b;   /* primary */
+  --dq-text-2:   #27272a;   /* secondary */
+  --dq-text-3:   #3f3f46;   /* entity names, card body */
+  --dq-text-4:   #71717a;   /* field labels */
+  --dq-text-5:   #8e8e93;   /* muted mono */
+  --dq-text-6:   #71717a;   /* section sub-labels */
+  --dq-text-7:   #a1a1aa;   /* dim */
+  --dq-text-8:   #b0b0b6;   /* separators, appId */
+
+  /* DQ design tokens — borders */
+  --dq-border-1: rgba(0, 0, 0, 0.07);  /* page / sidebar */
+  --dq-border-2: rgba(0, 0, 0, 0.08);  /* card */
+  --dq-border-3: rgba(0, 0, 0, 0.1);   /* input / button */
+  --dq-border-4: rgba(0, 0, 0, 0.13);  /* strong */
+
+  /* DQ design tokens — status colors */
+  --dq-green:    #1a7f37;
+  --dq-amber:    #9a6700;
+  --dq-red:      #cf222e;
+  --dq-blue:     #0969da;
+  --dq-green-bg: rgba(26, 127, 55, 0.12);
+  --dq-amber-bg: rgba(154, 103, 0, 0.12);
+  --dq-red-bg:   rgba(207, 34, 46, 0.08);
+  --dq-blue-bg:  rgba(9, 105, 218, 0.12);
+
+  /* DQ design tokens — primary button */
+  --dq-btn-bg:   #18181b;
+  --dq-btn-fg:   #ffffff;
+
+  /* DQ design tokens — logo mark */
+  --dq-logo-bg:  #18181b;
+  --dq-logo-fg:  #ffffff;
+
+  /* DQ design tokens — strong active borders (pill toggles, checkboxes) */
+  --dq-border-strong: rgba(0, 0, 0, 0.18);
+
+  /* Status variables (keep in sync with --dq-*) */
+  --status-ok:           #1a7f37;
+  --status-ok-bg:        rgba(26, 127, 55, 0.12);
+  --status-warning:      #9a6700;
+  --status-warning-bg:   rgba(154, 103, 0, 0.12);
+  --status-critical:     #cf222e;
+  --status-critical-bg:  rgba(207, 34, 46, 0.12);
+  --status-running:      #0969da;
+  --status-running-bg:   rgba(9, 105, 218, 0.12);
+
+  --dq-pulse-color: rgba(9, 105, 218, 0.55);
+  --dq-pulse-end:   rgba(9, 105, 218, 0);
 }
 
 @theme inline {
-  --color-status-ok: var(--status-ok);
-  --color-status-ok-bg: var(--status-ok-bg);
-  --color-status-warning: var(--status-warning);
-  --color-status-warning-bg: var(--status-warning-bg);
-  --color-status-critical: var(--status-critical);
-  --color-status-critical-bg: var(--status-critical-bg);
-  --color-status-running: var(--status-running);
-  --color-status-running-bg: var(--status-running-bg);
+  --color-status-ok:           var(--status-ok);
+  --color-status-ok-bg:        var(--status-ok-bg);
+  --color-status-warning:      var(--status-warning);
+  --color-status-warning-bg:   var(--status-warning-bg);
+  --color-status-critical:     var(--status-critical);
+  --color-status-critical-bg:  var(--status-critical-bg);
+  --color-status-running:      var(--status-running);
+  --color-status-running-bg:   var(--status-running-bg);
 }
 
 @layer base {
@@ -164,9 +316,9 @@
 
 /* ── Design animations ───────────────────────────────────────── */
 @keyframes dqpulse {
-  0%   { box-shadow: 0 0 0 0 rgba(68, 147, 248, 0.55) }
-  70%  { box-shadow: 0 0 0 6px rgba(68, 147, 248, 0) }
-  100% { box-shadow: 0 0 0 0 rgba(68, 147, 248, 0) }
+  0%   { box-shadow: 0 0 0 0 var(--dq-pulse-color) }
+  70%  { box-shadow: 0 0 0 6px var(--dq-pulse-end) }
+  100% { box-shadow: 0 0 0 0 var(--dq-pulse-end) }
 }
 @keyframes dqshimmer {
   0%   { transform: translateX(-100%) }

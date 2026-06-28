@@ -19,7 +19,7 @@ function CustomSwitch({ checked, disabled, onChange }: {
         width:        '34px',
         height:       '19px',
         borderRadius: '10px',
-        background:   checked ? '#3fb950' : 'rgba(255,255,255,0.14)',
+        background:   checked ? 'var(--dq-green)' : 'var(--dq-border-4)',
         cursor:       disabled ? 'not-allowed' : 'pointer',
         opacity:      disabled ? 0.6 : 1,
         transition:   'background 0.15s',
@@ -55,14 +55,14 @@ function IconBtn({ onClick, active, amber, title, children }: {
         width:      '28px',
         height:     '28px',
         border:     active && amber
-          ? '1px solid rgba(210,153,34,0.4)'
-          : '1px solid rgba(255,255,255,0.1)',
+          ? '1px solid color-mix(in srgb, var(--dq-amber) 40%, transparent)'
+          : '1px solid var(--dq-border-3)',
         background: active && amber
-          ? 'rgba(210,153,34,0.12)'
+          ? 'var(--dq-amber-bg)'
           : active
-          ? 'rgba(255,255,255,0.07)'
+          ? 'var(--dq-border-1)'
           : 'transparent',
-        color:      active && amber ? '#d29922' : '#9a9a9a',
+        color:      active && amber ? 'var(--dq-amber)' : 'var(--dq-text-4)',
         cursor:     'pointer',
       }}
     >
@@ -151,12 +151,12 @@ export default function ConfigPage() {
     <div className="flex flex-col">
       {/* ── Page header ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between border-b px-[22px] py-[16px]"
-        style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        style={{ borderColor: 'var(--dq-border-1)' }}>
         <div>
           <div className="text-[16px] font-semibold" style={{ letterSpacing: '-0.015em' }}>
             Scraper Config
           </div>
-          <div className="mt-[3px] text-[12px]" style={{ color: '#8a8a8a' }}>
+          <div className="mt-[3px] text-[12px]" style={{ color: 'var(--dq-text-5)' }}>
             Auto-check schedules and alert thresholds
           </div>
         </div>
@@ -165,8 +165,8 @@ export default function ConfigPage() {
           disabled={syncing}
           className="flex items-center gap-[7px] rounded-[7px] px-[12px] py-[7px] text-[12px] font-medium transition-colors"
           style={{
-            border:     '1px solid rgba(255,255,255,0.13)',
-            color:      '#ededed',
+            border:     '1px solid var(--dq-border-4)',
+            color:      'var(--dq-text-1)',
             cursor:     syncing ? 'not-allowed' : 'pointer',
             background: 'transparent',
             opacity:    syncing ? 0.7 : 1,
@@ -178,9 +178,9 @@ export default function ConfigPage() {
       </div>
 
       {/* ── Content area ────────────────────────────────────────── */}
-      <div style={{ background: '#080808' }}>
+      <div style={{ background: 'var(--dq-bg-2)' }}>
         {scrapers.length === 0 ? (
-          <p className="py-16 text-center text-[12px]" style={{ color: '#6b6b6b' }}>
+          <p className="py-16 text-center text-[12px]" style={{ color: 'var(--dq-text-7)' }}>
             No scrapers — click "Sync from scrapers_db" to load.
           </p>
         ) : (
@@ -189,9 +189,9 @@ export default function ConfigPage() {
             <div className="grid items-center gap-[12px] px-[22px] py-[10px] font-mono text-[10.5px] font-medium"
               style={{
                 gridTemplateColumns: COLS,
-                color:        '#6b6b6b',
+                color:        'var(--dq-text-7)',
                 letterSpacing: '0.06em',
-                borderBottom: '1px solid rgba(255,255,255,0.07)',
+                borderBottom: '1px solid var(--dq-border-1)',
               }}>
               <span>SCRAPER</span>
               <span>AUTO-CHECK</span>
@@ -207,13 +207,13 @@ export default function ConfigPage() {
               const isThrOpen  = open?.appId === scraper.appId && open.panel === 'thresholds'
 
               const dotColor = config?.isActive
-                ? '#3fb950'
+                ? 'var(--dq-green)'
                 : config
-                ? '#d29922'
-                : 'rgba(255,255,255,0.18)'
+                ? 'var(--dq-amber)'
+                : 'var(--dq-border-4)'
 
               return (
-                <div key={scraper.appId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div key={scraper.appId} style={{ borderBottom: '1px solid var(--dq-border-1)' }}>
                   {/* Main row */}
                   <div className="grid items-start gap-[12px] px-[22px] py-[13px]"
                     style={{ gridTemplateColumns: COLS }}>
@@ -224,7 +224,7 @@ export default function ConfigPage() {
                         style={{ width: '7px', height: '7px', background: dotColor }} />
                       <div>
                         <div className="text-[13px] font-medium">{scraper.name}</div>
-                        <div className="font-mono text-[10.5px]" style={{ color: '#5e5e5e' }}>
+                        <div className="font-mono text-[10.5px]" style={{ color: 'var(--dq-text-8)' }}>
                           {scraper.appId}
                         </div>
                       </div>
@@ -234,15 +234,15 @@ export default function ConfigPage() {
                     <div>
                       {config ? (
                         <>
-                          <div className="text-[12.5px]" style={{ color: '#cfcfcf' }}>
+                          <div className="text-[12.5px]" style={{ color: 'var(--dq-text-2)' }}>
                             ● {config.environment} · {config.checksEnabled.map((c) => c === 'api_db' ? 'API→DB' : c).join(', ')}
                           </div>
-                          <div className="mt-[2px] font-mono text-[11px]" style={{ color: '#6b6b6b' }}>
+                          <div className="mt-[2px] font-mono text-[11px]" style={{ color: 'var(--dq-text-7)' }}>
                             {config.entityTypes.join(' · ')}
                           </div>
                         </>
                       ) : (
-                        <span className="text-[12px] italic" style={{ color: '#6b6b6b' }}>
+                        <span className="text-[12px] italic" style={{ color: 'var(--dq-text-7)' }}>
                           not configured
                         </span>
                       )}
@@ -250,7 +250,7 @@ export default function ConfigPage() {
 
                     {/* THRESHOLDS */}
                     <div className="font-mono text-[12px]"
-                      style={{ color: scraperThr.length > 0 ? '#bdbdbd' : '#6b6b6b' }}>
+                      style={{ color: scraperThr.length > 0 ? 'var(--dq-text-3)' : 'var(--dq-text-7)' }}>
                       {scraperThr.length > 0
                         ? `${scraperThr.length} set${scraperThr.length !== 1 ? 's' : ''} configured`
                         : '—'}

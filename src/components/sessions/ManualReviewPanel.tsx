@@ -40,9 +40,9 @@ export function ManualReviewPanel({ polygonChecks, aiComparisons, entityType, ap
           onKeyDown={(e) => e.key === 'Enter' && entityId && handleLookup()}
           className="flex-1 rounded-[7px] px-[11px] py-[7px] font-mono text-[12.5px] outline-none"
           style={{
-            background: '#080808',
-            border:     '1px solid rgba(255,255,255,0.1)',
-            color:      '#ededed',
+            background: 'var(--dq-bg-2)',
+            border:     '1px solid var(--dq-border-3)',
+            color:      'var(--dq-text-1)',
             maxWidth:   '280px',
           }}
         />
@@ -52,8 +52,8 @@ export function ManualReviewPanel({ polygonChecks, aiComparisons, entityType, ap
           disabled={!entityId || loading}
           className="rounded-[7px] px-[13px] py-[7px] text-[12px] font-medium transition-opacity"
           style={{
-            border:     '1px solid rgba(255,255,255,0.1)',
-            color:      '#bdbdbd',
+            border:     '1px solid var(--dq-border-3)',
+            color:      'var(--dq-text-3)',
             cursor:     !entityId || loading ? 'not-allowed' : 'pointer',
             opacity:    !entityId || loading ? 0.5 : 1,
             background: 'transparent',
@@ -68,12 +68,12 @@ export function ManualReviewPanel({ polygonChecks, aiComparisons, entityType, ap
           {([['API', apiData], ['DB', dbData]] as [string, unknown][]).map(([label, data]) => (
             <div key={label}>
               <div className="mb-[5px] font-mono text-[10px] font-medium"
-                style={{ color: '#6b6b6b', letterSpacing: '0.05em' }}>
+                style={{ color: 'var(--dq-text-7)', letterSpacing: '0.05em' }}>
                 {label}
               </div>
               <pre
                 className="max-h-96 overflow-auto rounded-[8px] p-[12px] font-mono text-[12px]"
-                style={{ background: '#0a0a0a', color: '#cfcfcf', border: '1px solid rgba(255,255,255,0.07)' }}
+                style={{ background: 'var(--dq-bg-1)', color: 'var(--dq-text-2)', border: '1px solid var(--dq-border-1)' }}
               >
                 {JSON.stringify(data, null, 2)}
               </pre>

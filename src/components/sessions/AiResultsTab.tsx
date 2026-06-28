@@ -49,10 +49,10 @@ function getRowType(
 }
 
 const ROW_STYLE: Record<RowType, { bg: string; border: string }> = {
-  match:    { bg: 'rgba(63,185,80,0.07)',  border: '#3fb950'     },
-  dynamic:  { bg: 'rgba(210,153,34,0.08)', border: '#d29922'     },
-  mismatch: { bg: 'rgba(248,81,73,0.08)',  border: '#f85149'     },
-  neutral:  { bg: 'transparent',           border: 'transparent' },
+  match:    { bg: 'var(--dq-green-bg)',  border: 'var(--dq-green)' },
+  dynamic:  { bg: 'var(--dq-amber-bg)', border: 'var(--dq-amber)' },
+  mismatch: { bg: 'var(--dq-red-bg)',   border: 'var(--dq-red)'   },
+  neutral:  { bg: 'transparent',        border: 'transparent'     },
 }
 
 const DIFF_COLS = '1.5fr 1.1fr 1.1fr 1.5fr'
@@ -80,13 +80,13 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
     return haversineKm(aLat, aLng, dLat, dLng)
   })()
 
-  const dbBorder = '1px solid rgba(255,255,255,0.1)'
+  const dbBorder = '1px solid var(--dq-border-3)'
 
   return (
-    <div className="overflow-hidden rounded-[7px]" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+    <div className="overflow-hidden rounded-[7px]" style={{ border: '1px solid var(--dq-border-2)' }}>
       {/* Column headers */}
       <div className="grid items-center gap-[8px] px-[10px] py-[7px] font-mono text-[10px] font-medium"
-        style={{ gridTemplateColumns: DIFF_COLS, background: '#0c0c0c', color: '#5e5e5e', letterSpacing: '0.04em' }}>
+        style={{ gridTemplateColumns: DIFF_COLS, background: 'var(--dq-bg-5)', color: 'var(--dq-text-8)', letterSpacing: '0.04em' }}>
         <span>RAW</span>
         <span>RULE</span>
         <span>TRANSFORMED</span>
@@ -117,49 +117,49 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
               gridTemplateColumns: DIFF_COLS,
               background:   rs.bg,
               borderLeft:   `2px solid ${rs.border}`,
-              borderBottom: '1px solid rgba(255,255,255,0.04)',
+              borderBottom: '1px solid var(--dq-border-1)',
             }}
           >
             {/* API Raw */}
-            <div style={{ color: '#cfcfcf' }}>
+            <div style={{ color: 'var(--dq-text-2)' }}>
               {isConst
-                ? <span style={{ color: '#5e5e5e' }}>—</span>
+                ? <span style={{ color: 'var(--dq-text-8)' }}>—</span>
                 : <>
                     <span style={{ color: '#5a8ab0' }}>&quot;{apiKey}&quot;</span>
-                    <span style={{ color: '#5e5e5e' }}>: </span>
+                    <span style={{ color: 'var(--dq-text-8)' }}>: </span>
                     <span>{JSON.stringify(rawVal)}</span>
                   </>}
             </div>
 
             {/* Rule */}
-            <div style={{ color: '#8a8a8a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ color: 'var(--dq-text-5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {ruleText}
             </div>
 
             {/* Transformed */}
-            <div style={{ color: '#bdbdbd' }}>
+            <div style={{ color: 'var(--dq-text-3)' }}>
               {!isConst && apiPresent ? JSON.stringify(transformed) : ''}
             </div>
 
             {/* DB */}
-            <div style={{ paddingLeft: '12px', borderLeft: dbBorder, color: rType === 'mismatch' ? '#f4a59f' : '#cfcfcf' }}>
+            <div style={{ paddingLeft: '12px', borderLeft: dbBorder, color: rType === 'mismatch' ? 'var(--dq-red)' : 'var(--dq-text-2)' }}>
               {dbPresent
                 ? <>
                     <span style={{ color: '#7a5a9a' }}>&quot;{dbKey}&quot;</span>
-                    <span style={{ color: '#5e5e5e' }}>: </span>
+                    <span style={{ color: 'var(--dq-text-8)' }}>: </span>
                     <span>{JSON.stringify(dbVal)}</span>
                   </>
-                : <span style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>}
+                : <span style={{ color: 'var(--dq-text-7)' }}>—</span>}
             </div>
           </div>
         )
       })}
 
       {/* Raw API accordion */}
-      <div className="px-[10px] py-[7px]" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="px-[10px] py-[7px]" style={{ borderTop: '1px solid var(--dq-border-1)' }}>
         <button
           className="flex items-center gap-[6px] font-mono text-[11px] transition-colors hover:text-[#bdbdbd]"
-          style={{ color: '#6b6b6b', cursor: 'pointer', background: 'none', border: 'none' }}
+          style={{ color: 'var(--dq-text-7)', cursor: 'pointer', background: 'none', border: 'none' }}
           onClick={(e) => { e.stopPropagation(); setRawOpen((o) => !o) }}
         >
           <span style={{ transform: rawOpen ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>▶</span>
@@ -167,7 +167,7 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
         </button>
         {rawOpen && (
           <pre className="mt-[6px] max-h-52 overflow-auto rounded-[5px] p-[8px] font-mono text-[10px]"
-            style={{ background: 'rgba(255,255,255,0.03)', color: '#bdbdbd' }}>
+            style={{ background: 'var(--dq-border-1)', color: 'var(--dq-text-3)' }}>
             {JSON.stringify(api, null, 2)}
           </pre>
         )}
@@ -180,11 +180,11 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
 
 function VerdictBadge({ verdict }: { verdict: string }) {
   const STYLES: Record<string, { color: string; bg: string }> = {
-    Same:         { color: '#3fb950', bg: 'rgba(63,185,80,0.13)'  },
-    SomewhatSame: { color: '#d29922', bg: 'rgba(210,153,34,0.13)' },
-    Different:    { color: '#f85149', bg: 'rgba(248,81,73,0.13)'  },
+    Same:         { color: 'var(--dq-green)', bg: 'var(--dq-green-bg)' },
+    SomewhatSame: { color: 'var(--dq-amber)', bg: 'var(--dq-amber-bg)' },
+    Different:    { color: 'var(--dq-red)',   bg: 'var(--dq-red-bg)'   },
   }
-  const s = STYLES[verdict] ?? { color: '#9a9a9a', bg: 'rgba(255,255,255,0.07)' }
+  const s = STYLES[verdict] ?? { color: 'var(--dq-text-4)', bg: 'var(--dq-border-1)' }
   return (
     <span className="shrink-0 rounded-[5px] px-[7px] py-[2px] font-mono text-[11px] font-medium"
       style={{ color: s.color, background: s.bg }}>
@@ -195,66 +195,127 @@ function VerdictBadge({ verdict }: { verdict: string }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+const VERDICT_FILTERS = [
+  { value: 'all',          label: 'All'           },
+  { value: 'Same',         label: 'Same'          },
+  { value: 'SomewhatSame', label: 'Somewhat same' },
+  { value: 'Different',    label: 'Different'     },
+] as const
+
+type VerdictFilter = typeof VERDICT_FILTERS[number]['value']
+
+const VERDICT_COLOR: Record<string, string> = {
+  Same:         'var(--dq-green)',
+  SomewhatSame: 'var(--dq-amber)',
+  Different:    'var(--dq-red)',
+}
+
 interface Props { comparisons: AiComparison[]; appId: string }
 
 export function AiResultsTab({ comparisons, appId }: Props) {
   const [openId, setOpenId] = useState<string | null>(null)
+  const [filter, setFilter] = useState<VerdictFilter>('all')
 
   if (comparisons.length === 0) {
     return (
-      <p className="text-[12px]" style={{ color: '#6b6b6b' }}>
+      <p className="text-[12px]" style={{ color: 'var(--dq-text-7)' }}>
         No AI comparisons for this entity type.
       </p>
     )
   }
 
+  const counts = comparisons.reduce<Record<string, number>>((acc, c) => {
+    acc[c.verdict] = (acc[c.verdict] ?? 0) + 1
+    return acc
+  }, {})
+
+  const visible = filter === 'all' ? comparisons : comparisons.filter((c) => c.verdict === filter)
+
   return (
-    <div className="flex flex-col gap-[6px]">
-      {comparisons.map((c) => {
-        const isOpen = openId === c.id
-        const api    = (c.apiSnapshot ?? {}) as Obj
-        const db     = (c.dbSnapshot  ?? {}) as Obj
+    <div className="flex flex-col gap-[10px]">
+      {/* Filter bar */}
+      <div className="flex items-center gap-[6px]">
+        {VERDICT_FILTERS.map(({ value, label }) => {
+          const count   = value === 'all' ? comparisons.length : (counts[value] ?? 0)
+          const active  = filter === value
+          const dotColor = value !== 'all' ? VERDICT_COLOR[value] : undefined
+          return (
+            <button
+              key={value}
+              onClick={() => { setFilter(value); setOpenId(null) }}
+              className="flex items-center gap-[6px] rounded-[6px] px-[10px] py-[5px] text-[12px] transition-colors"
+              style={{
+                border:     active ? '1px solid var(--dq-border-strong)' : '1px solid var(--dq-border-2)',
+                background: active ? 'var(--dq-border-2)' : 'transparent',
+                color:      active ? 'var(--dq-text-1)' : 'var(--dq-text-5)',
+                cursor:     'pointer',
+                fontWeight: active ? 500 : 400,
+              }}
+            >
+              {dotColor && (
+                <span className="shrink-0 rounded-full"
+                  style={{ width: '6px', height: '6px', background: dotColor }} />
+              )}
+              {label}
+              <span className="font-mono text-[11px]"
+                style={{ color: active ? 'var(--dq-text-4)' : 'var(--dq-text-7)' }}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
-        return (
-          <div
-            key={c.id}
-            className="overflow-hidden rounded-[8px] cursor-pointer select-none"
-            style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.08)' }}
-            onClick={() => setOpenId(isOpen ? null : c.id)}
-          >
-            {/* Header row */}
-            <div className="flex items-center gap-[10px] px-[14px] py-[11px]">
-              <span
-                className="shrink-0 text-[10px] transition-transform"
-                style={{
-                  color:     '#6b6b6b',
-                  transform: isOpen ? 'rotate(90deg)' : 'none',
-                  display:   'inline-block',
-                }}>
-                ▶
-              </span>
-              <VerdictBadge verdict={c.verdict} />
-              <span className="shrink-0 font-mono text-[12px]" style={{ color: '#cfcfcf' }}>
-                {c.entityId}
-              </span>
-              <span className="min-w-0 truncate text-[12px]" style={{ color: '#8a8a8a' }}>
-                {c.explanation}
-              </span>
-            </div>
+      {/* List */}
+      <div className="flex flex-col gap-[6px]">
+        {visible.length === 0 ? (
+          <p className="text-[12px]" style={{ color: 'var(--dq-text-7)' }}>No comparisons match this filter.</p>
+        ) : visible.map((c) => {
+          const isOpen = openId === c.id
+          const api    = (c.apiSnapshot ?? {}) as Obj
+          const db     = (c.dbSnapshot  ?? {}) as Obj
 
-            {/* Expanded diff table */}
-            {isOpen && (
-              <div className="px-[14px] pb-[14px]"
-                style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
-                onClick={(e) => e.stopPropagation()}>
-                <div className="pt-[12px]">
-                  <DiffTable api={api} db={db} entityType={c.entityType} appId={appId} />
-                </div>
+          return (
+            <div
+              key={c.id}
+              className="overflow-hidden rounded-[8px] cursor-pointer select-none"
+              style={{ background: 'var(--dq-bg-3)', border: '1px solid var(--dq-border-2)' }}
+              onClick={() => setOpenId(isOpen ? null : c.id)}
+            >
+              {/* Header row */}
+              <div className="flex items-center gap-[10px] px-[14px] py-[11px]">
+                <span
+                  className="shrink-0 text-[10px] transition-transform"
+                  style={{
+                    color:     'var(--dq-text-7)',
+                    transform: isOpen ? 'rotate(90deg)' : 'none',
+                    display:   'inline-block',
+                  }}>
+                  ▶
+                </span>
+                <VerdictBadge verdict={c.verdict} />
+                <span className="shrink-0 font-mono text-[12px]" style={{ color: 'var(--dq-text-2)' }}>
+                  {c.entityId}
+                </span>
+                <span className="min-w-0 truncate text-[12px]" style={{ color: 'var(--dq-text-5)' }}>
+                  {c.explanation}
+                </span>
               </div>
-            )}
-          </div>
-        )
-      })}
+
+              {/* Expanded diff table */}
+              {isOpen && (
+                <div className="px-[14px] pb-[14px]"
+                  style={{ borderTop: '1px solid var(--dq-border-1)' }}
+                  onClick={(e) => e.stopPropagation()}>
+                  <div className="pt-[12px]">
+                    <DiffTable api={api} db={db} entityType={c.entityType} appId={appId} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

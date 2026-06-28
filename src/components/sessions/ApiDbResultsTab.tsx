@@ -8,7 +8,7 @@ interface Props {
 }
 
 function pctColor(p: number) {
-  return p >= 98 ? '#3fb950' : p >= 94 ? '#d29922' : '#f85149'
+  return p >= 98 ? 'var(--dq-green)' : p >= 94 ? 'var(--dq-amber)' : 'var(--dq-red)'
 }
 
 export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
@@ -23,26 +23,26 @@ export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
     <div>
       {/* Stats row */}
       <div className="flex flex-wrap items-center gap-[18px] font-mono text-[13px]"
-        style={{ color: '#bdbdbd' }}>
+        style={{ color: 'var(--dq-text-3)' }}>
         <span>
-          <span style={{ color: '#ededed' }}>{summary.totalUniqueInApi}</span>
+          <span style={{ color: 'var(--dq-text-1)' }}>{summary.totalUniqueInApi}</span>
           {' '}checked
         </span>
-        <span style={{ color: '#5e5e5e' }}>·</span>
+        <span style={{ color: 'var(--dq-text-8)' }}>·</span>
         <span>
-          <span style={{ color: '#3fb950' }}>{summary.totalFoundInDb}</span>
+          <span style={{ color: 'var(--dq-green)' }}>{summary.totalFoundInDb}</span>
           {' '}found
         </span>
         {summary.totalNotFoundInDb > 0 && (
           <>
-            <span style={{ color: '#5e5e5e' }}>·</span>
+            <span style={{ color: 'var(--dq-text-8)' }}>·</span>
             <span>
-              <span style={{ color: '#f85149' }}>{summary.totalNotFoundInDb}</span>
+              <span style={{ color: 'var(--dq-red)' }}>{summary.totalNotFoundInDb}</span>
               {' '}missing
             </span>
           </>
         )}
-        <span style={{ color: '#5e5e5e' }}>·</span>
+        <span style={{ color: 'var(--dq-text-8)' }}>·</span>
         <span style={{ color: pctColor(pct), fontWeight: 500 }}>{pct}%</span>
       </div>
 
@@ -53,9 +53,9 @@ export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
             onClick={() => setMissOpen((o) => !o)}
             className="rounded-[6px] px-[10px] py-[5px] font-mono text-[11.5px] transition-colors"
             style={{
-              background: 'rgba(248,81,73,0.08)',
-              border:     '1px solid rgba(248,81,73,0.2)',
-              color:      '#f4a59f',
+              background: 'var(--dq-red-bg)',
+              border:     '1px solid color-mix(in srgb, var(--dq-red) 25%, transparent)',
+              color:      'var(--dq-red)',
               cursor:     'pointer',
             }}
           >
@@ -69,9 +69,9 @@ export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
                   key={entityId}
                   className="rounded-[5px] px-[8px] py-[2px] font-mono text-[11px]"
                   style={{
-                    background: 'rgba(248,81,73,0.08)',
-                    border:     '1px solid rgba(248,81,73,0.18)',
-                    color:      '#f4a59f',
+                    background: 'var(--dq-red-bg)',
+                    border:     '1px solid color-mix(in srgb, var(--dq-red) 20%, transparent)',
+                    color:      'var(--dq-red)',
                   }}
                 >
                   {entityId}

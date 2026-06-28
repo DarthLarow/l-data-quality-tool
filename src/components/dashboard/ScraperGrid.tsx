@@ -50,15 +50,15 @@ function relTime(iso: string): string {
 }
 
 function pctColor(p: number) {
-  return p >= 98 ? '#3fb950' : p >= 94 ? '#d29922' : '#f85149'
+  return p >= 98 ? 'var(--dq-green)' : p >= 94 ? 'var(--dq-amber)' : 'var(--dq-red)'
 }
 
 const ACCENT: Record<Health, string> = {
-  healthy: '#3fb950',
-  warning:  '#d29922',
-  critical: '#f85149',
-  running:  '#4493f8',
-  unknown:  'rgba(255,255,255,0.12)',
+  healthy: 'var(--dq-green)',
+  warning:  'var(--dq-amber)',
+  critical: 'var(--dq-red)',
+  running:  'var(--dq-blue)',
+  unknown:  'var(--dq-border-4)',
 }
 
 export function ScraperGrid() {
@@ -87,22 +87,22 @@ export function ScraperGrid() {
     <div className="flex flex-col">
       {/* ── Page header ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between border-b px-[22px] py-[16px]"
-        style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        style={{ borderColor: 'var(--dq-border-1)' }}>
         <div>
           <div className="text-[16px] font-semibold" style={{ letterSpacing: '-0.015em' }}>
             Scrapers
           </div>
           {!loading && (
-            <div className="mt-[3px] text-[12px]" style={{ color: '#8a8a8a' }}>
+            <div className="mt-[3px] text-[12px]" style={{ color: 'var(--dq-text-5)' }}>
               {scrapers.length} source{scrapers.length !== 1 ? 's' : ''}
               {!!healthCounts.critical && (
-                <> · <span style={{ color: '#f85149' }}>{healthCounts.critical} critical</span></>
+                <> · <span style={{ color: 'var(--dq-red)' }}>{healthCounts.critical} critical</span></>
               )}
               {!!healthCounts.warning && (
-                <> · <span style={{ color: '#d29922' }}>{healthCounts.warning} warning{healthCounts.warning !== 1 ? 's' : ''}</span></>
+                <> · <span style={{ color: 'var(--dq-amber)' }}>{healthCounts.warning} warning{healthCounts.warning !== 1 ? 's' : ''}</span></>
               )}
               {!!healthCounts.running && (
-                <> · <span style={{ color: '#4493f8' }}>{healthCounts.running} running</span></>
+                <> · <span style={{ color: 'var(--dq-blue)' }}>{healthCounts.running} running</span></>
               )}
             </div>
           )}
@@ -110,34 +110,34 @@ export function ScraperGrid() {
         <div className="flex items-center gap-[10px]">
           {/* Search (visual only — filter not implemented yet) */}
           <div className="flex items-center gap-[7px] rounded-[7px] px-[11px] py-[7px] font-mono text-[12px]"
-            style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#7a7a7a', width: '160px' }}>
+            style={{ border: '1px solid var(--dq-border-3)', color: 'var(--dq-text-6)', width: '160px' }}>
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <circle cx="5.5" cy="5.5" r="4" stroke="#6b6b6b" strokeWidth="1.4" />
-              <line x1="8.6" y1="8.6" x2="12" y2="12" stroke="#6b6b6b" strokeWidth="1.4" strokeLinecap="round" />
+              <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.4" />
+              <line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
             search…
           </div>
           <Link href="/sessions/new"
             className="rounded-[7px] px-[13px] py-[8px] text-[12px] font-semibold"
-            style={{ background: '#ededed', color: '#0a0a0a' }}>
+            style={{ background: 'var(--dq-btn-bg)', color: 'var(--dq-btn-fg)' }}>
             ＋ New Check
           </Link>
         </div>
       </div>
 
       {/* ── Grid area ───────────────────────────────────────────── */}
-      <div className="flex-1 p-[18px_22px]" style={{ background: '#080808' }}>
+      <div className="flex-1 p-[18px_22px]" style={{ background: 'var(--dq-bg-2)' }}>
         {loading ? (
           <div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="h-[158px] rounded-[9px]"
-                style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.6 }}>
-                <div className="m-[13px_15px] h-3 w-24 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                style={{ background: 'var(--dq-bg-3)', border: '1px solid var(--dq-border-2)', opacity: 0.6 }}>
+                <div className="m-[13px_15px] h-3 w-24 rounded animate-pulse" style={{ background: 'var(--dq-border-1)' }} />
               </div>
             ))}
           </div>
         ) : scrapers.length === 0 ? (
-          <p className="py-16 text-center text-sm" style={{ color: '#6b6b6b' }}>
+          <p className="py-16 text-center text-sm" style={{ color: 'var(--dq-text-7)' }}>
             No active scrapers. Go to Config → Sync from scrapers_db.
           </p>
         ) : (
@@ -161,8 +161,8 @@ export function ScraperGrid() {
                   onClick={() => last && router.push(`/sessions/${last.id}`)}
                   className="flex flex-col gap-[10px] rounded-[9px] transition-colors"
                   style={{
-                    background:   '#0f0f0f',
-                    border:       '1px solid rgba(255,255,255,0.08)',
+                    background:   'var(--dq-bg-3)',
+                    border:       '1px solid var(--dq-border-2)',
                     borderLeft:   `3px solid ${accent}`,
                     padding:      '13px 15px',
                     minHeight:    '158px',
@@ -184,11 +184,11 @@ export function ScraperGrid() {
                       <span className="truncate text-[14px] font-semibold" style={{ letterSpacing: '-0.01em' }}>
                         {scraper.name}
                       </span>
-                      <span className="shrink-0 font-mono text-[11px] truncate" style={{ color: '#5e5e5e' }}>
+                      <span className="shrink-0 font-mono text-[11px] truncate" style={{ color: 'var(--dq-text-8)' }}>
                         {scraper.appId}
                       </span>
                     </div>
-                    <span className="shrink-0 font-mono text-[11px]" style={{ color: '#8a8a8a' }}>
+                    <span className="shrink-0 font-mono text-[11px]" style={{ color: 'var(--dq-text-5)' }}>
                       {last ? relTime(last.createdAt) : ''}
                     </span>
                   </div>
@@ -197,13 +197,13 @@ export function ScraperGrid() {
                   {!last ? (
                     /* Empty state */
                     <div className="flex flex-1 flex-col items-center justify-center gap-[9px] py-[16px]"
-                      style={{ color: '#6b6b6b' }}>
+                      style={{ color: 'var(--dq-text-7)' }}>
                       <div className="text-[12px]">No sessions yet</div>
                       <Link
                         href={`/sessions/new?scraper=${scraper.appId}`}
                         onClick={(e) => e.stopPropagation()}
                         className="rounded-[6px] px-[13px] py-[6px] text-[11px] font-semibold"
-                        style={{ border: '1px solid rgba(255,255,255,0.13)', color: '#ededed' }}
+                        style={{ border: '1px solid var(--dq-border-4)', color: 'var(--dq-text-1)' }}
                       >
                         Run first check →
                       </Link>
@@ -212,21 +212,21 @@ export function ScraperGrid() {
                     /* Running state */
                     <div className="flex flex-1 flex-col justify-center gap-[9px]">
                       <div className="flex items-center gap-[8px]">
-                        <span className="text-[11px] font-medium" style={{ color: '#4493f8' }}>Checking…</span>
-                        <span className="font-mono text-[11px]" style={{ color: '#6b6b6b' }}>
+                        <span className="text-[11px] font-medium" style={{ color: 'var(--dq-blue)' }}>Checking…</span>
+                        <span className="font-mono text-[11px]" style={{ color: 'var(--dq-text-7)' }}>
                           #{last.scrapersSessionId}
                         </span>
                       </div>
                       <div className="relative overflow-hidden rounded-[3px]"
-                        style={{ height: '5px', background: 'rgba(255,255,255,0.07)' }}>
-                        <div className="h-full rounded-[3px]" style={{ width: '40%', background: '#4493f8' }} />
+                        style={{ height: '5px', background: 'var(--dq-border-1)' }}>
+                        <div className="h-full rounded-[3px]" style={{ width: '40%', background: 'var(--dq-blue)' }} />
                         <div className="absolute inset-y-0 left-0 w-[40px]"
                           style={{
                             background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)',
                             animation:  'dqshimmer 1.3s infinite',
                           }} />
                       </div>
-                      <div className="font-mono text-[11px]" style={{ color: '#6b6b6b' }}>In progress…</div>
+                      <div className="font-mono text-[11px]" style={{ color: 'var(--dq-text-7)' }}>In progress…</div>
                     </div>
                   ) : (
                     /* Normal state */
@@ -236,29 +236,27 @@ export function ScraperGrid() {
                         <span className="rounded-[4px] px-[7px] py-[1px] font-mono text-[10px] font-medium uppercase"
                           style={{
                             letterSpacing: '0.04em',
-                            color:      envLive ? '#3fb950' : '#d29922',
-                            background: envLive ? 'rgba(63,185,80,0.12)' : 'rgba(210,153,34,0.12)',
+                            color:      envLive ? 'var(--dq-green)' : 'var(--dq-amber)',
+                            background: envLive ? 'var(--dq-green-bg)' : 'var(--dq-amber-bg)',
                           }}>
                           {envLive ? 'live' : 'stage'}
                         </span>
-                        <span className="font-mono text-[11px]" style={{ color: '#8a8a8a' }}>
+                        <span className="font-mono text-[11px]" style={{ color: 'var(--dq-text-5)' }}>
                           #{last.scrapersSessionId}
                         </span>
                       </div>
 
-                      {/* Coverage rows */}
-                      {last.entityCheckSummaries.length > 0 && (
+                      {/* Coverage rows — skip entities with 0 API items (no data collected) */}
+                      {last.entityCheckSummaries.some((e) => e.totalUniqueInApi > 0) && (
                         <div className="flex flex-col">
-                          {last.entityCheckSummaries.map((e) => {
-                            const pct = e.totalUniqueInApi > 0
-                              ? Math.round((e.totalFoundInDb / e.totalUniqueInApi) * 100)
-                              : 100
+                          {last.entityCheckSummaries.filter((e) => e.totalUniqueInApi > 0).map((e) => {
+                            const pct = Math.round((e.totalFoundInDb / e.totalUniqueInApi) * 100)
                             return (
                               <div key={e.entityType}
                                 className="grid items-center gap-[10px] py-[4px]"
-                                style={{ gridTemplateColumns: '1fr auto 42px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                <span className="text-[12px]" style={{ color: '#bdbdbd' }}>{e.entityType}</span>
-                                <span className="text-right font-mono text-[12px]" style={{ color: '#8a8a8a' }}>
+                                style={{ gridTemplateColumns: '1fr auto 42px', borderTop: '1px solid var(--dq-border-1)' }}>
+                                <span className="text-[12px]" style={{ color: 'var(--dq-text-3)' }}>{e.entityType}</span>
+                                <span className="text-right font-mono text-[12px]" style={{ color: 'var(--dq-text-5)' }}>
                                   {e.totalFoundInDb}/{e.totalUniqueInApi}
                                 </span>
                                 <span className="text-right font-mono text-[12px] font-medium"
@@ -274,9 +272,9 @@ export function ScraperGrid() {
                       {/* AI summary */}
                       {hasAi && (
                         <div className="flex items-center gap-[12px] pt-[1px] font-mono text-[11px]">
-                          {!!verdicts.Same        && <span style={{ color: '#3fb950' }}>● {verdicts.Same} Same</span>}
-                          {!!verdicts.SomewhatSame && <span style={{ color: '#d29922' }}>● {verdicts.SomewhatSame} ~</span>}
-                          {!!verdicts.Different   && <span style={{ color: '#f85149' }}>● {verdicts.Different} Diff</span>}
+                          <span style={{ color: 'var(--dq-green)' }}>● {verdicts.Same         ?? 0} Same</span>
+                          <span style={{ color: 'var(--dq-amber)' }}>● {verdicts.SomewhatSame ?? 0} Somewhat same</span>
+                          <span style={{ color: 'var(--dq-red)' }}>● {verdicts.Different    ?? 0} Different</span>
                         </div>
                       )}
                     </>
@@ -285,16 +283,16 @@ export function ScraperGrid() {
                   {/* ── Actions ────────────────────────────────────── */}
                   {last && (
                     <div className="mt-auto flex gap-[8px] pt-[10px]"
-                      style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                      style={{ borderTop: '1px solid var(--dq-border-1)' }}
                       onClick={(e) => e.stopPropagation()}>
                       <Link href={`/sessions?scraper=${scraper.appId}`}
                         className="flex-1 rounded-[6px] py-[6px] text-center text-[11px] font-medium"
-                        style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#bdbdbd' }}>
+                        style={{ border: '1px solid var(--dq-border-3)', color: 'var(--dq-text-3)' }}>
                         Sessions
                       </Link>
                       <Link href={`/sessions/new?scraper=${scraper.appId}`}
                         className="flex-1 rounded-[6px] py-[6px] text-center text-[11px] font-semibold"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#ededed' }}>
+                        style={{ background: 'var(--dq-border-1)', border: '1px solid var(--dq-border-3)', color: 'var(--dq-text-1)' }}>
                         Run →
                       </Link>
                     </div>

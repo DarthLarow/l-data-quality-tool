@@ -57,9 +57,9 @@ function NumInput({ value, onChange }: { value: string; onChange: (v: string) =>
       onChange={(e) => onChange(e.target.value)}
       className="w-full rounded-[5px] py-[5px] text-center font-mono text-[12px] outline-none"
       style={{
-        background: '#080808',
-        border:     '1px solid rgba(255,255,255,0.1)',
-        color:      '#ededed',
+        background: 'var(--dq-bg-2)',
+        border:     '1px solid var(--dq-border-3)',
+        color:      'var(--dq-text-1)',
       }}
     />
   )
@@ -134,19 +134,19 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
     <div className="rounded-[9px]"
       style={{
         margin:     '2px 22px 14px',
-        background: '#0d0d0d',
-        border:     '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--dq-bg-4)',
+        border:     '1px solid var(--dq-border-2)',
         padding:    '16px 18px',
       }}>
 
       {/* Panel header */}
       <div className="mb-[14px] font-mono text-[11px] font-semibold"
-        style={{ color: '#9a9a9a', letterSpacing: '0.05em' }}>
+        style={{ color: 'var(--dq-text-4)', letterSpacing: '0.05em' }}>
         ALERT THRESHOLDS · {scraperName.toUpperCase()}
       </div>
 
       {configuredTypes.length === 0 && !adding && (
-        <p className="text-[12px]" style={{ color: '#6b6b6b' }}>No thresholds configured.</p>
+        <p className="text-[12px]" style={{ color: 'var(--dq-text-7)' }}>No thresholds configured.</p>
       )}
 
       {(configuredTypes.length > 0 || adding) && (
@@ -156,8 +156,8 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
             style={{
               gridTemplateColumns: GRID,
               letterSpacing: '0.04em',
-              color: '#7a7a7a',
-              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              color: 'var(--dq-text-6)',
+              borderBottom: '1px solid var(--dq-border-2)',
             }}>
             <div />
             <div style={{ gridColumn: 'span 2', textAlign: 'center' }}>NOT FOUND IN DB</div>
@@ -169,11 +169,11 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
           {/* WARN / CRIT sub-header */}
           <div className="grid gap-[8px] py-[5px] font-mono text-[10px] font-medium"
             style={{ gridTemplateColumns: GRID }}>
-            <div className="text-[10px]" style={{ color: '#6b6b6b', letterSpacing: '0.04em' }}>ENTITY</div>
+            <div className="text-[10px]" style={{ color: 'var(--dq-text-7)', letterSpacing: '0.04em' }}>ENTITY</div>
             {[0, 1, 2].map((g) => (
               <>
-                <div key={`w${g}`} className="text-center" style={{ color: '#d29922' }}>W</div>
-                <div key={`c${g}`} className="text-center" style={{ color: '#f85149' }}>C</div>
+                <div key={`w${g}`} className="text-center" style={{ color: 'var(--dq-amber)' }}>W</div>
+                <div key={`c${g}`} className="text-center" style={{ color: 'var(--dq-red)' }}>C</div>
               </>
             ))}
             <div />
@@ -184,8 +184,8 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
             const row = rows[et]!
             return (
               <div key={et} className="grid items-center gap-[8px] py-[4px]"
-                style={{ gridTemplateColumns: GRID, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                <div className="text-[12px] capitalize" style={{ color: '#cfcfcf' }}>{et}</div>
+                style={{ gridTemplateColumns: GRID, borderTop: '1px solid var(--dq-border-1)' }}>
+                <div className="text-[12px] capitalize" style={{ color: 'var(--dq-text-2)' }}>{et}</div>
                 <NumInput value={row.missingWarn}  onChange={(v) => update(et, 'missingWarn',  v)} />
                 <NumInput value={row.missingCrit}  onChange={(v) => update(et, 'missingCrit',  v)} />
                 <NumInput value={row.mismatchWarn} onChange={(v) => update(et, 'mismatchWarn', v)} />
@@ -200,9 +200,9 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
                       onClick={() => save(et)}
                       className="rounded-[5px] px-[8px] py-[3px] font-mono text-[11px] transition-colors"
                       style={{
-                        background: 'rgba(255,255,255,0.07)',
-                        border:     '1px solid rgba(255,255,255,0.14)',
-                        color:      '#ededed',
+                        background: 'var(--dq-border-1)',
+                        border:     '1px solid var(--dq-border-4)',
+                        color:      'var(--dq-text-1)',
                         cursor:     row.saving ? 'not-allowed' : 'pointer',
                         opacity:    row.saving ? 0.5 : 1,
                       }}
@@ -217,8 +217,8 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
                     style={{
                       width:      '22px',
                       height:     '22px',
-                      border:     '1px solid rgba(255,255,255,0.08)',
-                      color:      '#6b6b6b',
+                      border:     '1px solid var(--dq-border-2)',
+                      color:      'var(--dq-text-7)',
                       cursor:     'pointer',
                       background: 'transparent',
                     }}
@@ -235,11 +235,11 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
           {/* Add new row */}
           {adding && (
             <div className="grid items-center gap-[8px] py-[6px]"
-              style={{ gridTemplateColumns: GRID, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              style={{ gridTemplateColumns: GRID, borderTop: '1px solid var(--dq-border-1)' }}>
               {/* Entity type picker */}
               <div className="relative">
                 <div className="pointer-events-none flex items-center justify-between rounded-[5px] px-[8px] py-[5px] font-mono text-[11.5px]"
-                  style={{ border: '1px solid rgba(255,255,255,0.1)', background: '#080808', color: newType ? '#ededed' : '#5e5e5e' }}>
+                  style={{ border: '1px solid var(--dq-border-3)', background: 'var(--dq-bg-2)', color: newType ? 'var(--dq-text-1)' : 'var(--dq-text-8)' }}>
                   {newType || 'type ▾'}
                 </div>
                 <select
@@ -266,8 +266,8 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
                   onClick={addNew}
                   className="rounded-[5px] px-[8px] py-[3px] font-mono text-[11px]"
                   style={{
-                    background: '#ededed',
-                    color:      '#0a0a0a',
+                    background: 'var(--dq-btn-bg)',
+                    color:      'var(--dq-btn-fg)',
                     cursor:     !newType || addSaving ? 'not-allowed' : 'pointer',
                     opacity:    !newType || addSaving ? 0.4 : 1,
                     border:     'none',
@@ -281,8 +281,8 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
                   className="rounded-[5px] px-[8px] py-[3px] font-mono text-[11px]"
                   style={{
                     background: 'transparent',
-                    border:     '1px solid rgba(255,255,255,0.1)',
-                    color:      '#8a8a8a',
+                    border:     '1px solid var(--dq-border-3)',
+                    color:      'var(--dq-text-5)',
                     cursor:     'pointer',
                   }}
                 >
@@ -301,8 +301,8 @@ export function ScraperThresholdEditor({ appId, scraperName, thresholds, onSaved
           onClick={() => setAdding(true)}
           className="mt-[10px] flex items-center gap-[6px] rounded-[6px] px-[10px] py-[5px] font-mono text-[11.5px] transition-colors"
           style={{
-            border:     '1px solid rgba(255,255,255,0.1)',
-            color:      '#8a8a8a',
+            border:     '1px solid var(--dq-border-3)',
+            color:      'var(--dq-text-5)',
             cursor:     'pointer',
             background: 'transparent',
           }}

@@ -17,7 +17,7 @@ interface Props { session: SessionWithResults }
 const ENTITY_ORDER = ['dockless', 'docked', 'pricings', 'zones'] as const
 
 function pctColor(p: number) {
-  return p >= 98 ? '#3fb950' : p >= 94 ? '#d29922' : '#f85149'
+  return p >= 98 ? 'var(--dq-green)' : p >= 94 ? 'var(--dq-amber)' : 'var(--dq-red)'
 }
 
 export function SessionResultsTabs({ session }: Props) {
@@ -37,7 +37,7 @@ export function SessionResultsTabs({ session }: Props) {
       {hasSummaryData && (
         <div className="mx-[22px] my-[18px] overflow-hidden rounded-[10px]"
           style={{
-            border:              '1px solid rgba(255,255,255,0.08)',
+            border:              '1px solid var(--dq-border-2)',
             display:             'grid',
             gridTemplateColumns: showApiDb && showAi && session.aiComparisons.length > 0 ? '1fr 1fr' : '1fr',
           }}>
@@ -45,9 +45,9 @@ export function SessionResultsTabs({ session }: Props) {
           {/* API → DB panel */}
           {showApiDb && session.entityCheckSummaries.length > 0 && (
             <div className="p-[16px_18px]"
-              style={{ borderRight: showAi && session.aiComparisons.length > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+              style={{ borderRight: showAi && session.aiComparisons.length > 0 ? '1px solid var(--dq-border-2)' : 'none' }}>
               <div className="mb-[12px] font-mono text-[11px] font-semibold"
-                style={{ color: '#8a8a8a', letterSpacing: '0.06em' }}>
+                style={{ color: 'var(--dq-text-5)', letterSpacing: '0.06em' }}>
                 API → DB
               </div>
               <table className="w-full border-collapse">
@@ -56,7 +56,7 @@ export function SessionResultsTabs({ session }: Props) {
                     {['ENTITY', 'CHECKED', 'FOUND', 'MISS', 'COV'].map((h) => (
                       <th key={h}
                         className={`pb-[8px] font-mono text-[10px] font-medium ${h !== 'ENTITY' ? 'text-right' : 'text-left'}`}
-                        style={{ color: '#5e5e5e', letterSpacing: '0.04em' }}>
+                        style={{ color: 'var(--dq-text-8)', letterSpacing: '0.04em' }}>
                         {h}
                       </th>
                     ))}
@@ -68,12 +68,12 @@ export function SessionResultsTabs({ session }: Props) {
                     if (!s || s.totalUniqueInApi === 0) return null
                     const pct = Math.round((s.totalFoundInDb / s.totalUniqueInApi) * 100)
                     return (
-                      <tr key={et} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: '#cfcfcf' }}>{et}</td>
-                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#9a9a9a' }}>{s.totalUniqueInApi}</td>
-                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#9a9a9a' }}>{s.totalFoundInDb}</td>
+                      <tr key={et} style={{ borderBottom: '1px solid var(--dq-border-1)' }}>
+                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: 'var(--dq-text-2)' }}>{et}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-text-4)' }}>{s.totalUniqueInApi}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-text-4)' }}>{s.totalFoundInDb}</td>
                         <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]"
-                          style={{ color: s.totalNotFoundInDb > 0 ? '#f85149' : '#5e5e5e' }}>
+                          style={{ color: s.totalNotFoundInDb > 0 ? 'var(--dq-red)' : 'var(--dq-text-8)' }}>
                           {s.totalNotFoundInDb > 0 ? `(−${s.totalNotFoundInDb})` : '—'}
                         </td>
                         <td className="py-[5px] text-right font-mono text-[12px] font-medium"
@@ -92,16 +92,16 @@ export function SessionResultsTabs({ session }: Props) {
           {showAi && session.aiComparisons.length > 0 && (
             <div className="p-[16px_18px]">
               <div className="mb-[12px] font-mono text-[11px] font-semibold"
-                style={{ color: '#8a8a8a', letterSpacing: '0.06em' }}>
+                style={{ color: 'var(--dq-text-5)', letterSpacing: '0.06em' }}>
                 AI COMPARISON
               </div>
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    {['ENTITY', 'SAME', 'SOMEWHAT', 'DIFF'].map((h) => (
+                    {['ENTITY', 'SAME', 'SOMEWHAT SAME', 'DIFFERENT'].map((h) => (
                       <th key={h}
                         className={`pb-[8px] font-mono text-[10px] font-medium ${h !== 'ENTITY' ? 'text-right' : 'text-left'}`}
-                        style={{ color: '#5e5e5e', letterSpacing: '0.04em' }}>
+                        style={{ color: 'var(--dq-text-8)', letterSpacing: '0.04em' }}>
                         {h}
                       </th>
                     ))}
@@ -114,17 +114,17 @@ export function SessionResultsTabs({ session }: Props) {
                     const cnt = cts.reduce<Record<string, number>>((acc, c) => {
                       acc[c.verdict] = (acc[c.verdict] ?? 0) + 1; return acc
                     }, {})
-                    const dash = <span style={{ color: '#5e5e5e' }}>—</span>
+                    const dash = <span style={{ color: 'var(--dq-text-8)' }}>—</span>
                     return (
-                      <tr key={et} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: '#cfcfcf' }}>{et}</td>
-                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#3fb950' }}>
+                      <tr key={et} style={{ borderBottom: '1px solid var(--dq-border-1)' }}>
+                        <td className="py-[5px] pr-[12px] text-[12px] capitalize" style={{ color: 'var(--dq-text-2)' }}>{et}</td>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-green)' }}>
                           {cnt.Same ?? dash}
                         </td>
-                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: '#d29922' }}>
+                        <td className="py-[5px] pr-[8px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-amber)' }}>
                           {cnt.SomewhatSame ?? dash}
                         </td>
-                        <td className="py-[5px] text-right font-mono text-[12px]" style={{ color: '#f85149' }}>
+                        <td className="py-[5px] text-right font-mono text-[12px]" style={{ color: 'var(--dq-red)' }}>
                           {cnt.Different ?? dash}
                         </td>
                       </tr>
@@ -139,22 +139,22 @@ export function SessionResultsTabs({ session }: Props) {
 
       {/* ── Sticky nav pills ─────────────────────────────────────── */}
       <nav className="sticky top-0 z-10 flex flex-wrap items-center gap-[8px] px-[22px] py-[12px]"
-        style={{ background: '#0a0a0a', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        style={{ background: 'var(--dq-bg-1)', borderBottom: '1px solid var(--dq-border-1)' }}>
         {sections.map((et) => {
           const summary = session.entityCheckSummaries.find((s) => s.entityType === et)
           const aiCount = session.aiComparisons.filter((a) => a.entityType === et).length
           const pct = summary && summary.totalUniqueInApi > 0
             ? Math.round((summary.totalFoundInDb / summary.totalUniqueInApi) * 100)
             : null
-          const dot  = pct === null ? 'rgba(255,255,255,0.2)' : pctColor(pct)
-          const ptxt = pct === null ? '#6b6b6b'               : pctColor(pct)
+          const dot  = pct === null ? 'var(--dq-border-4)' : pctColor(pct)
+          const ptxt = pct === null ? 'var(--dq-text-7)'   : pctColor(pct)
 
           return (
             <a
               key={et}
               href={`#section-${et}`}
               className="flex items-center gap-[7px] rounded-[8px] px-[11px] py-[7px] text-[12.5px] font-medium no-underline transition-colors"
-              style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.1)', color: '#cfcfcf' }}
+              style={{ background: 'var(--dq-bg-3)', border: '1px solid var(--dq-border-3)', color: 'var(--dq-text-2)' }}
             >
               <span className="shrink-0 rounded-full"
                 style={{ width: '7px', height: '7px', background: dot }} />
@@ -163,7 +163,7 @@ export function SessionResultsTabs({ session }: Props) {
                 <span className="font-mono text-[11px]" style={{ color: ptxt }}>{pct}%</span>
               )}
               {aiCount > 0 && (
-                <span className="font-mono text-[11px]" style={{ color: '#6b6b6b' }}>· {aiCount} AI</span>
+                <span className="font-mono text-[11px]" style={{ color: 'var(--dq-text-7)' }}>· {aiCount} AI</span>
               )}
             </a>
           )
@@ -187,11 +187,11 @@ export function SessionResultsTabs({ session }: Props) {
               key={et}
               id={`section-${et}`}
               className="overflow-hidden rounded-[10px] scroll-mt-[60px]"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: 'var(--dq-bg-4)', border: '1px solid var(--dq-border-2)' }}
             >
               {/* Section header */}
               <div className="flex items-center gap-[10px] px-[18px] py-[14px]"
-                style={{ background: '#101010', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                style={{ background: 'var(--dq-bg-4)', borderBottom: '1px solid var(--dq-border-2)' }}>
                 <span className="text-[14px] font-semibold capitalize">{et}</span>
                 {pct !== null && (
                   <span className="font-mono text-[13px] font-medium" style={{ color: pctColor(pct) }}>
@@ -199,12 +199,12 @@ export function SessionResultsTabs({ session }: Props) {
                   </span>
                 )}
                 {aiComparisons.length > 0 && (
-                  <span className="font-mono text-[12px]" style={{ color: '#6b6b6b' }}>
+                  <span className="font-mono text-[12px]" style={{ color: 'var(--dq-text-7)' }}>
                     · {aiComparisons.length} AI
                   </span>
                 )}
                 {aiDiff > 0 && (
-                  <span className="text-[12px]" style={{ color: '#f85149' }}>
+                  <span className="text-[12px]" style={{ color: 'var(--dq-red)' }}>
                     + {aiDiff} different
                   </span>
                 )}
@@ -215,16 +215,16 @@ export function SessionResultsTabs({ session }: Props) {
                 <div className="px-[18px] py-[14px]"
                   style={{
                     borderBottom: showAi && aiComparisons.length > 0
-                      ? '1px solid rgba(255,255,255,0.07)'
+                      ? '1px solid var(--dq-border-1)'
                       : 'none',
                   }}>
                   <div className="mb-[10px] font-mono text-[10.5px] font-semibold"
-                    style={{ color: '#7a7a7a', letterSpacing: '0.06em' }}>
+                    style={{ color: 'var(--dq-text-6)', letterSpacing: '0.06em' }}>
                     API → DB · COMPLETENESS
                   </div>
                   {summary
                     ? <ApiDbResultsTab summary={summary} polygonChecks={polygonChecks} />
-                    : <p className="text-[12px]" style={{ color: '#6b6b6b' }}>No data</p>}
+                    : <p className="text-[12px]" style={{ color: 'var(--dq-text-7)' }}>No data</p>}
                 </div>
               )}
 
@@ -232,7 +232,7 @@ export function SessionResultsTabs({ session }: Props) {
               {showAi && aiComparisons.length > 0 && (
                 <div className="px-[18px] py-[14px]">
                   <div className="mb-[10px] font-mono text-[10.5px] font-semibold"
-                    style={{ color: '#7a7a7a', letterSpacing: '0.06em' }}>
+                    style={{ color: 'var(--dq-text-6)', letterSpacing: '0.06em' }}>
                     AI COMPARISON
                   </div>
                   <AiResultsTab comparisons={aiComparisons} appId={session.appId} />

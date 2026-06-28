@@ -26,9 +26,9 @@ function PillToggle({ active, onClick, children, disabled }: {
       onClick={disabled ? undefined : onClick}
       className="rounded-[6px] px-[10px] py-[5px] text-[12px] transition-colors"
       style={{
-        border:     active ? '1px solid rgba(255,255,255,0.22)' : '1px solid rgba(255,255,255,0.1)',
-        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
-        color:      active ? '#ededed' : disabled ? '#4a4a4a' : '#8a8a8a',
+        border:     active ? '1px solid var(--dq-border-strong)' : '1px solid var(--dq-border-3)',
+        background: active ? 'var(--dq-border-2)' : 'transparent',
+        color:      active ? 'var(--dq-text-1)' : disabled ? 'var(--dq-text-8)' : 'var(--dq-text-5)',
         cursor:     disabled ? 'not-allowed' : 'pointer',
         opacity:    disabled ? 0.5 : 1,
       }}
@@ -41,7 +41,7 @@ function PillToggle({ active, onClick, children, disabled }: {
 function FieldLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div className="mb-[7px] text-[12px] font-medium"
-      style={{ color: '#9a9a9a', ...style }}>
+      style={{ color: 'var(--dq-text-4)', ...style }}>
       {children}
     </div>
   )
@@ -98,11 +98,11 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
   return (
     <form onSubmit={handleSubmit}
       className="rounded-[9px] p-[16px_18px]"
-      style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)' }}>
+      style={{ background: 'var(--dq-bg-4)', border: '1px solid var(--dq-border-2)' }}>
 
       {/* Panel header */}
       <div className="mb-[14px] font-mono text-[11px] font-semibold"
-        style={{ color: '#9a9a9a', letterSpacing: '0.05em' }}>
+        style={{ color: 'var(--dq-text-4)', letterSpacing: '0.05em' }}>
         AUTO-CHECK CONFIG · {scraper.appId.toUpperCase()}
       </div>
 
@@ -112,7 +112,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
         <div>
           <FieldLabel>Environment</FieldLabel>
           <div className="flex w-fit overflow-hidden rounded-[7px]"
-            style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+            style={{ border: '1px solid var(--dq-border-3)' }}>
             {(['staging', 'production'] as Environment[]).map((env, i) => (
               <button
                 key={env}
@@ -120,10 +120,10 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
                 onClick={() => setEnvironment(env)}
                 className="px-[14px] py-[6px] text-[12px] capitalize transition-colors"
                 style={{
-                  background: environment === env ? 'rgba(255,255,255,0.09)' : 'transparent',
-                  color:      environment === env ? '#ededed' : '#8a8a8a',
+                  background: environment === env ? 'var(--dq-border-2)' : 'transparent',
+                  color:      environment === env ? 'var(--dq-text-1)' : 'var(--dq-text-5)',
                   fontWeight: environment === env ? 500 : 400,
-                  borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                  borderLeft: i > 0 ? '1px solid var(--dq-border-2)' : 'none',
                   cursor:     'pointer',
                 }}
               >
@@ -173,7 +173,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
                   onChange={(e) => setPolygonCity(e.target.value)}
                   placeholder="City name"
                   className="rounded-[6px] bg-transparent px-[10px] py-[6px] text-[12px] outline-none"
-                  style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#ededed', maxWidth: '200px' }}
+                  style={{ border: '1px solid var(--dq-border-3)', color: 'var(--dq-text-1)', maxWidth: '200px' }}
                 />
               )}
             </div>
@@ -198,7 +198,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
 
         {/* Check types */}
         <div>
-          <FieldLabel style={checksError ? { color: '#f85149' } : undefined}>
+          <FieldLabel style={checksError ? { color: 'var(--dq-red)' } : undefined}>
             Check Types{checksError ? ' — enable at least one' : ''}
           </FieldLabel>
           <div className="flex flex-wrap gap-[6px]">
@@ -229,9 +229,9 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
             className="rounded-[6px] bg-transparent px-[10px] py-[6px] text-center font-mono text-[13px] outline-none"
             style={{
               width:      '80px',
-              border:     '1px solid rgba(255,255,255,0.1)',
-              background: '#080808',
-              color:      '#ededed',
+              border:     '1px solid var(--dq-border-3)',
+              background: 'var(--dq-bg-2)',
+              color:      'var(--dq-text-1)',
             }}
           />
         </div>
@@ -245,7 +245,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
               width:        '34px',
               height:       '19px',
               borderRadius: '10px',
-              background:   isActive ? '#3fb950' : 'rgba(255,255,255,0.14)',
+              background:   isActive ? 'var(--dq-green)' : 'var(--dq-border-4)',
               cursor:       'pointer',
               transition:   'background 0.15s',
               flexShrink:   0,
@@ -262,7 +262,7 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
               transition:   'left 0.15s',
             }} />
           </div>
-          <span className="text-[12px]" style={{ color: isActive ? '#cfcfcf' : '#6b6b6b' }}>
+          <span className="text-[12px]" style={{ color: isActive ? 'var(--dq-text-2)' : 'var(--dq-text-7)' }}>
             {isActive ? 'Active' : 'Inactive'}
           </span>
         </div>
@@ -274,8 +274,8 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
             disabled={saving || checksError}
             className="rounded-[7px] px-[14px] py-[7px] text-[12px] font-semibold transition-opacity"
             style={{
-              background: '#ededed',
-              color:      '#0a0a0a',
+              background: 'var(--dq-btn-bg)',
+              color:      'var(--dq-btn-fg)',
               cursor:     saving || checksError ? 'not-allowed' : 'pointer',
               opacity:    saving || checksError ? 0.5 : 1,
               border:     'none',
@@ -289,8 +289,8 @@ export function AutoCheckConfigForm({ scraper, existingConfig, onSaved, onCancel
             className="rounded-[7px] px-[14px] py-[7px] text-[12px] font-medium transition-colors"
             style={{
               background: 'transparent',
-              border:     '1px solid rgba(255,255,255,0.1)',
-              color:      '#8a8a8a',
+              border:     '1px solid var(--dq-border-3)',
+              color:      'var(--dq-text-5)',
               cursor:     'pointer',
             }}
           >

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link          from 'next/link'
 import { prisma }   from '@/lib/quality-db'
 import { SessionResultsTabs } from '@/components/sessions/SessionResultsTabs'
+import { RerunButton }        from '@/components/sessions/RerunButton'
 
 function relTime(d: Date) {
   const diff = Date.now() - d.getTime()
@@ -45,14 +46,14 @@ export default async function SessionPage({
     <div className="flex flex-col">
       {/* ── Page header ─────────────────────────────────────────── */}
       <div className="flex items-start justify-between border-b px-[22px] py-[16px]"
-        style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        style={{ borderColor: 'var(--dq-border-1)' }}>
         <div>
           {/* Breadcrumb */}
           <div className="mb-[7px] flex items-center gap-[6px] font-mono text-[11px]"
-            style={{ color: '#6b6b6b' }}>
+            style={{ color: 'var(--dq-text-7)' }}>
             <Link href="/sessions"
               className="transition-colors hover:text-[#bdbdbd]"
-              style={{ color: '#6b6b6b' }}>
+              style={{ color: 'var(--dq-text-7)' }}>
               Sessions
             </Link>
             <span>/</span>
@@ -68,8 +69,8 @@ export default async function SessionPage({
             <span className="rounded-[4px] px-[7px] py-[2px] font-mono text-[10px] font-medium uppercase"
               style={{
                 letterSpacing: '0.04em',
-                color:         envLive ? '#3fb950' : '#d29922',
-                background:    envLive ? 'rgba(63,185,80,0.12)' : 'rgba(210,153,34,0.12)',
+                color:         envLive ? 'var(--dq-green)' : 'var(--dq-amber)',
+                background:    envLive ? 'var(--dq-green-bg)' : 'var(--dq-amber-bg)',
               }}>
               {envLive ? 'live' : 'stage'}
             </span>
@@ -77,16 +78,16 @@ export default async function SessionPage({
             {/* Status badge */}
             <span className="flex items-center gap-[6px] rounded-[5px] px-[8px] py-[3px] text-[12px] font-medium"
               style={{
-                background: isRun  ? 'rgba(68,147,248,0.12)'
-                          : isDone ? 'rgba(63,185,80,0.12)'
-                          :          'rgba(248,81,73,0.12)',
-                color:      isRun  ? '#4493f8'
-                          : isDone ? '#3fb950'
-                          :          '#f85149',
+                background: isRun  ? 'var(--dq-blue-bg)'
+                          : isDone ? 'var(--dq-green-bg)'
+                          :          'var(--dq-red-bg)',
+                color:      isRun  ? 'var(--dq-blue)'
+                          : isDone ? 'var(--dq-green)'
+                          :          'var(--dq-red)',
               }}>
               {isRun && (
                 <span className="shrink-0 rounded-full"
-                  style={{ width: '6px', height: '6px', background: '#4493f8',
+                  style={{ width: '6px', height: '6px', background: 'var(--dq-blue)',
                            animation: 'dqpulse 1.4s ease-out infinite' }} />
               )}
               {isRun ? 'In progress' : isDone ? 'Completed' : 'Failed'}
@@ -94,7 +95,7 @@ export default async function SessionPage({
           </div>
 
           {/* Meta */}
-          <div className="mt-[6px] font-mono text-[11.5px]" style={{ color: '#7a7a7a' }}>
+          <div className="mt-[6px] font-mono text-[11.5px]" style={{ color: 'var(--dq-text-6)' }}>
             scrapers session #{session.scrapersSessionId}
             {' · '}
             created {relTime(session.createdAt)}
@@ -103,12 +104,7 @@ export default async function SessionPage({
 
         {/* Re-run button */}
         <div className="mt-[2px]">
-          <Link
-            href={`/sessions/new?scraper=${session.appId}`}
-            className="rounded-[7px] px-[11px] py-[7px] text-[12px] font-medium transition-colors"
-            style={{ border: '1px solid rgba(255,255,255,0.13)', color: '#cfcfcf' }}>
-            Re-run
-          </Link>
+          <RerunButton sessionId={session.id} />
         </div>
       </div>
 

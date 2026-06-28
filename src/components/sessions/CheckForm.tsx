@@ -27,7 +27,7 @@ const POLYGON_OPTIONS: { value: PolygonStrategy; label: string }[] = [
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-[8px] text-[12px] font-medium" style={{ color: '#9a9a9a' }}>
+    <div className="mb-[8px] text-[12px] font-medium" style={{ color: 'var(--dq-text-4)' }}>
       {children}
     </div>
   )
@@ -40,11 +40,15 @@ function PillToggle({ active, onClick, children, disabled }: {
     <button
       type="button"
       onClick={disabled ? undefined : onClick}
-      className="rounded-[7px] px-[11px] py-[6px] text-[12.5px] transition-colors"
+      className="rounded-[7px] px-[11px] py-[6px] outline-none"
       style={{
-        border:     active ? '1px solid rgba(255,255,255,0.22)' : '1px solid rgba(255,255,255,0.1)',
-        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
-        color:      active ? '#ededed' : disabled ? '#4a4a4a' : '#8a8a8a',
+        fontSize:   '12.5px',
+        lineHeight: '1',
+        fontWeight: 400,
+        whiteSpace: 'nowrap',
+        border:     active ? '1px solid var(--dq-border-strong)' : '1px solid var(--dq-border-3)',
+        background: active ? 'var(--dq-border-2)' : 'transparent',
+        color:      active ? 'var(--dq-text-1)' : disabled ? 'var(--dq-text-8)' : 'var(--dq-text-5)',
         cursor:     disabled ? 'not-allowed' : 'pointer',
         opacity:    disabled ? 0.5 : 1,
       }}
@@ -59,12 +63,12 @@ function MonoInput({ value, onChange, placeholder, required }: {
 }) {
   return (
     <div className="flex items-stretch overflow-hidden rounded-[7px]"
-      style={{ border: '1px solid rgba(255,255,255,0.1)', maxWidth: '240px' }}>
+      style={{ border: '1px solid var(--dq-border-3)', maxWidth: '240px' }}>
       <span className="flex items-center px-[10px] font-mono text-[13px]"
         style={{
-          color:       '#5e5e5e',
-          background:  'rgba(255,255,255,0.04)',
-          borderRight: '1px solid rgba(255,255,255,0.08)',
+          color:       'var(--dq-text-8)',
+          background:  'var(--dq-border-1)',
+          borderRight: '1px solid var(--dq-border-2)',
         }}>
         #
       </span>
@@ -75,7 +79,7 @@ function MonoInput({ value, onChange, placeholder, required }: {
         placeholder={placeholder ?? 'e.g. 1234'}
         required={required}
         className="flex-1 bg-transparent px-[10px] py-[8px] font-mono text-[13px] outline-none"
-        style={{ color: '#ededed' }}
+        style={{ color: 'var(--dq-text-1)' }}
       />
     </div>
   )
@@ -164,7 +168,7 @@ export function CheckForm() {
       <div>
         <FieldLabel>Environment</FieldLabel>
         <div className="flex w-fit overflow-hidden rounded-[7px]"
-          style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+          style={{ border: '1px solid var(--dq-border-3)' }}>
           {(['staging', 'production'] as Environment[]).map((env, i) => (
             <button
               key={env}
@@ -172,10 +176,10 @@ export function CheckForm() {
               onClick={() => setEnvironment(env)}
               className="px-[16px] py-[8px] text-[13px] capitalize transition-colors"
               style={{
-                background: environment === env ? 'rgba(255,255,255,0.09)' : 'transparent',
-                color:      environment === env ? '#ededed' : '#8a8a8a',
+                background: environment === env ? 'var(--dq-border-2)' : 'transparent',
+                color:      environment === env ? 'var(--dq-text-1)' : 'var(--dq-text-5)',
                 fontWeight: environment === env ? 500 : 400,
-                borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                borderLeft: i > 0 ? '1px solid var(--dq-border-2)' : 'none',
                 cursor:     'pointer',
               }}
             >
@@ -190,12 +194,12 @@ export function CheckForm() {
         <FieldLabel>Scraper</FieldLabel>
         <div className="relative" style={{ maxWidth: '340px' }}>
           <div className="pointer-events-none flex items-center justify-between rounded-[7px] px-[12px] py-[9px]"
-            style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+            style={{ border: '1px solid var(--dq-border-3)' }}>
             <span className="text-[13px] font-medium"
-              style={{ color: appId ? '#ededed' : '#6b6b6b' }}>
+              style={{ color: appId ? 'var(--dq-text-1)' : 'var(--dq-text-7)' }}>
               {selectedScraper?.name ?? 'Select scraper'}
             </span>
-            <span className="font-mono text-[12px]" style={{ color: '#6b6b6b' }}>
+            <span className="font-mono text-[12px]" style={{ color: 'var(--dq-text-7)' }}>
               {appId ? `${appId} ▾` : '▾'}
             </span>
           </div>
@@ -231,8 +235,8 @@ export function CheckForm() {
                 onClick={() => toggleCheckType(ct)}
                 className="flex cursor-pointer items-center gap-[12px] rounded-[8px] px-[14px] py-[11px] transition-all"
                 style={{
-                  border:     active ? '1px solid rgba(255,255,255,0.16)' : '1px solid rgba(255,255,255,0.08)',
-                  background: active ? 'rgba(255,255,255,0.03)' : 'transparent',
+                  border:     active ? '1px solid var(--dq-border-4)' : '1px solid var(--dq-border-2)',
+                  background: active ? 'var(--dq-border-1)' : 'transparent',
                 }}
               >
                 {/* Custom checkbox */}
@@ -240,22 +244,22 @@ export function CheckForm() {
                   style={{
                     width:      '18px',
                     height:     '18px',
-                    background: active ? '#ededed' : 'rgba(255,255,255,0.06)',
-                    border:     active ? 'none'    : '1px solid rgba(255,255,255,0.15)',
+                    background: active ? 'var(--dq-btn-bg)' : 'var(--dq-border-1)',
+                    border:     active ? 'none' : '1px solid var(--dq-border-4)',
                   }}>
                   {active && (
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1.5" stroke="#0a0a0a" strokeWidth="1.7"
+                      <path d="M1 4L3.5 6.5L9 1.5" stroke="var(--dq-btn-fg)" strokeWidth="1.7"
                         strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
                 </div>
                 <div>
                   <div className="text-[13px] font-medium"
-                    style={{ color: active ? '#ededed' : '#bdbdbd' }}>
+                    style={{ color: active ? 'var(--dq-text-1)' : 'var(--dq-text-3)' }}>
                     {title}
                   </div>
-                  <div className="text-[11px]" style={{ color: '#7a7a7a' }}>{desc}</div>
+                  <div className="text-[11px]" style={{ color: 'var(--dq-text-6)' }}>{desc}</div>
                 </div>
               </div>
             )
@@ -280,14 +284,14 @@ export function CheckForm() {
 
         {polygonStrategy === 'by_id' && (
           <div className="mt-[10px] flex items-stretch overflow-hidden rounded-[7px]"
-            style={{ border: '1px solid rgba(255,255,255,0.1)', maxWidth: '240px' }}>
+            style={{ border: '1px solid var(--dq-border-3)', maxWidth: '240px' }}>
             <input
               type="text"
               value={polygonId}
               onChange={(e) => setPolygonId(e.target.value)}
               placeholder="Polygon ID"
               className="flex-1 bg-transparent px-[12px] py-[8px] font-mono text-[13px] outline-none"
-              style={{ color: '#ededed' }}
+              style={{ color: 'var(--dq-text-1)' }}
             />
           </div>
         )}
@@ -308,14 +312,14 @@ export function CheckForm() {
               </div>
             ) : (
               <div className="flex items-stretch overflow-hidden rounded-[7px]"
-                style={{ border: '1px solid rgba(255,255,255,0.1)', maxWidth: '240px' }}>
+                style={{ border: '1px solid var(--dq-border-3)', maxWidth: '240px' }}>
                 <input
                   type="text"
                   value={polygonCity}
                   onChange={(e) => setPolygonCity(e.target.value)}
                   placeholder="City name"
                   className="flex-1 bg-transparent px-[12px] py-[8px] text-[13px] outline-none"
-                  style={{ color: '#ededed' }}
+                  style={{ color: 'var(--dq-text-1)' }}
                 />
               </div>
             )}
@@ -326,23 +330,17 @@ export function CheckForm() {
       {/* ── Entity types ────────────────────────────────────────── */}
       <div>
         <FieldLabel>Entity Types</FieldLabel>
-        <div className="flex flex-wrap gap-[6px]">
+        <div className="flex gap-[6px]">
           {ENTITY_TYPES.map((et) => (
             <PillToggle
               key={et}
               active={selectedEntityTypes.includes(et)}
               onClick={() => toggleEntityType(et)}
-              disabled={!appId}
             >
               {et}
             </PillToggle>
           ))}
         </div>
-        {!appId && (
-          <p className="mt-[6px] text-[11px]" style={{ color: '#6b6b6b' }}>
-            Select a scraper first
-          </p>
-        )}
       </div>
 
       {/* ── AI Sample Size ──────────────────────────────────────── */}
@@ -351,8 +349,8 @@ export function CheckForm() {
           <FieldLabel>AI Sample Size</FieldLabel>
           <div className="rounded-[8px] p-[14px_16px]"
             style={{
-              background: '#0d0d0d',
-              border:     '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--dq-bg-4)',
+              border:     '1px solid var(--dq-border-2)',
               maxWidth:   '280px',
             }}>
             <div className="flex items-center gap-[14px]">
@@ -363,15 +361,15 @@ export function CheckForm() {
                 style={{
                   width:      '26px',
                   height:     '26px',
-                  border:     '1px solid rgba(255,255,255,0.12)',
-                  color:      '#bdbdbd',
+                  border:     '1px solid var(--dq-border-4)',
+                  color:      'var(--dq-text-3)',
                   cursor:     'pointer',
                   background: 'transparent',
                 }}>
                 −
               </button>
               <span className="min-w-[28px] text-center font-mono text-[15px] font-semibold"
-                style={{ color: '#ededed' }}>
+                style={{ color: 'var(--dq-text-1)' }}>
                 {aiSampleSize}
               </span>
               <button
@@ -381,8 +379,8 @@ export function CheckForm() {
                 style={{
                   width:      '26px',
                   height:     '26px',
-                  border:     '1px solid rgba(255,255,255,0.12)',
-                  color:      '#bdbdbd',
+                  border:     '1px solid var(--dq-border-4)',
+                  color:      'var(--dq-text-3)',
                   cursor:     'pointer',
                   background: 'transparent',
                 }}>
@@ -392,14 +390,14 @@ export function CheckForm() {
 
             {/* Progress bar */}
             <div className="mt-[10px] overflow-hidden rounded-full"
-              style={{ height: '4px', background: 'rgba(255,255,255,0.08)' }}>
+              style={{ height: '4px', background: 'var(--dq-border-2)' }}>
               <div className="h-full rounded-full transition-all duration-150"
-                style={{ width: `${(aiSampleSize / 20) * 100}%`, background: '#ededed' }} />
+                style={{ width: `${(aiSampleSize / 20) * 100}%`, background: 'var(--dq-btn-bg)' }} />
             </div>
 
             {/* Range labels */}
             <div className="mt-[5px] flex justify-between font-mono text-[10px]"
-              style={{ color: '#5e5e5e' }}>
+              style={{ color: 'var(--dq-text-8)' }}>
               <span>1</span>
               <span>20</span>
             </div>
@@ -412,7 +410,7 @@ export function CheckForm() {
         <div>
           <FieldLabel>
             Previous Session ID{' '}
-            <span style={{ color: '#6b6b6b', fontWeight: 400 }}>for Delta</span>
+            <span style={{ color: 'var(--dq-text-7)', fontWeight: 400 }}>for Delta</span>
           </FieldLabel>
           <MonoInput
             value={previousScrapersSessionId}
@@ -426,9 +424,9 @@ export function CheckForm() {
       {error && (
         <p className="rounded-[6px] px-[12px] py-[8px] text-[12px]"
           style={{
-            background: 'rgba(248,81,73,0.1)',
-            border:     '1px solid rgba(248,81,73,0.2)',
-            color:      '#f4a59f',
+            background: 'var(--dq-red-bg)',
+            border:     'color-mix(in srgb, var(--dq-red) 25%, transparent) 1px solid',
+            color:      'var(--dq-red)',
           }}>
           {error}
         </p>
@@ -441,19 +439,22 @@ export function CheckForm() {
           disabled={!canSubmit}
           className="rounded-[8px] px-[20px] py-[10px] text-[13px] font-semibold transition-opacity"
           style={{
-            background: '#ededed',
-            color:      '#0a0a0a',
+            background: 'var(--dq-btn-bg)',
+            color:      'var(--dq-btn-fg)',
             cursor:     canSubmit ? 'pointer' : 'not-allowed',
             opacity:    canSubmit ? 1 : 0.45,
+            border:     'none',
           }}
         >
           {loading ? 'Running…' : 'Run Check →'}
         </button>
-        {selectedEntityTypes.length > 0 && !loading && (
-          <span className="font-mono text-[11.5px]" style={{ color: '#6b6b6b' }}>
-            · {selectedEntityTypes.length} entity type{selectedEntityTypes.length !== 1 ? 's' : ''}
-          </span>
-        )}
+        <span className="font-mono text-[11.5px]"
+          style={{
+            color:      'var(--dq-text-7)',
+            visibility: selectedEntityTypes.length > 0 && !loading ? 'visible' : 'hidden',
+          }}>
+          · {selectedEntityTypes.length} entity type{selectedEntityTypes.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
     </form>
