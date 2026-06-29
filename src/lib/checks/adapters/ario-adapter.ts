@@ -122,11 +122,13 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
     const data = await this.post('/app/api/getoutofoalist', { latitude: lat, longitude: lon }, account)
     const inner = (data?.data ?? data) as Record<string, unknown>
     const oaList = inner?.oa_list
-    if (oaList === null || oaList === undefined) {
+    // null = key present but explicitly nulled out by server → structural anomaly, possible block
+    // undefined = key simply absent → legitimate "no zones" response, fall through to [] below
+    if (oaList === null) {
       throw new ApiUnexpectedResponseError(
         'zones',
         polygon.polygonId,
-        `zones API returned null/undefined oa_list`,
+        'zones API returned null oa_list',
       )
     }
     if (!Array.isArray(oaList)) return []
