@@ -1,6 +1,7 @@
 import { getArioAccount } from '@/lib/scrapers-db'
 import { uuidv5 } from '@/lib/uuid5'
 import type { ScraperApiAdapter, PolygonBounds } from './scraper-adapter'
+import { ApiUnexpectedResponseError } from './scraper-adapter'
 import type { EntityType, ScraperEntity } from '@/types'
 
 // ─── Auth constants extracted from Ario APK ───────────────────────────────────
@@ -44,7 +45,12 @@ interface ArioAccount {
 
 export class ArioScraperApiAdapter implements ScraperApiAdapter {
   appId = 'ario'
+  readonly interPolygonDelayMs = 500
   private account: ArioAccount | null = null
+
+  polygonStrategy(entityType: EntityType): 'all' | 'center_only' {
+    return entityType === 'dockless' ? 'all' : 'center_only'
+  }
 
   async fetchEntities(polygon: PolygonBounds, entityType: EntityType): Promise<ScraperEntity[]> {
     if (entityType === 'docked') return []
@@ -56,8 +62,8 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
 
     switch (entityType) {
       case 'dockless': return this.fetchDockless(lat, lon, account)
-      case 'pricings': return this.fetchPricings(lat, lon, account, polygon.city ?? 'unknown')
-      case 'zones':    return this.fetchZones(lat, lon, account)
+      case 'pricings': return this.fetchPricings(polygon, account, polygon.city ?? 'unknown')
+      case 'zones':    return this.fetchZones(polygon, account)
     }
   }
 
@@ -72,7 +78,8 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
       .map((car) => ({ id: String(car.carId), ...car }))
   }
 
-  private async fetchPricings(lat: number, lon: number, account: ArioAccount, city: string): Promise<ScraperEntity[]> {
+  private async fetchPricings(polygon: PolygonBounds, account: ArioAccount, city: string): Promise<ScraperEntity[]> {
+    const { lat, lon } = this.parsePolygonPoint(polygon)
     const results: ScraperEntity[] = []
 
     // Base pricing: unlock fee + per-minute cost.
@@ -80,6 +87,13 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
     // the unlock entity showing timeFeeAmount (and vice versa) in the diff view.
     const priceData = await this.post('/app/api/pay/pricelist', { latitude: lat, longitude: lon }, account)
     const raw = (priceData?.data ?? priceData) as Record<string, unknown>
+    if (raw === null || raw === undefined) {
+      throw new ApiUnexpectedResponseError(
+        'pricings',
+        polygon.polygonId,
+        `pricings API returned null/undefined data`,
+      )
+    }
     if (raw && typeof raw === 'object') {
       const { unlockFeeAmount, timeFeeAmount, ...sharedFields } = raw as Record<string, unknown> & {
         unlockFeeAmount?: unknown; timeFeeAmount?: unknown
@@ -103,10 +117,18 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
     return results
   }
 
-  private async fetchZones(lat: number, lon: number, account: ArioAccount): Promise<ScraperEntity[]> {
+  private async fetchZones(polygon: PolygonBounds, account: ArioAccount): Promise<ScraperEntity[]> {
+    const { lat, lon } = this.parsePolygonPoint(polygon)
     const data = await this.post('/app/api/getoutofoalist', { latitude: lat, longitude: lon }, account)
     const inner = (data?.data ?? data) as Record<string, unknown>
     const oaList = inner?.oa_list
+    if (oaList === null || oaList === undefined) {
+      throw new ApiUnexpectedResponseError(
+        'zones',
+        polygon.polygonId,
+        `zones API returned null/undefined oa_list`,
+      )
+    }
     if (!Array.isArray(oaList)) return []
 
     const results: ScraperEntity[] = []
