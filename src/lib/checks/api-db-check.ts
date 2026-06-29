@@ -20,15 +20,15 @@ export async function runApiDbCheck(
       apiEntityMap.set(entity.id, entity as Record<string, unknown>)
     }
 
-    const foundMap = await findEntitiesByIds(apiEntityIds, entityType, input.appId)
+    const foundMap = await findEntitiesByIds(apiEntityIds, entityType, input.appId, input.scrapersSessionId)
     const foundInDb    = apiEntityIds.filter((id) => foundMap.has(id))
     const notFoundInDb = apiEntityIds.filter((id) => !foundMap.has(id))
 
-    polygonResults.push({ polygonId: bounds.polygonId, entityType, apiEntityIds, foundInDb, notFoundInDb })
+    polygonResults.push({ polygonId: bounds.polygonId, entityType, apiEntityIds, foundInDb, notFoundInDb, failedPolygons: [], suspectedBlock: false })
   }
 
   const uniqueIds = Array.from(allApiIds)
-  const foundMap  = await findEntitiesByIds(uniqueIds, entityType, input.appId)
+  const foundMap  = await findEntitiesByIds(uniqueIds, entityType, input.appId, input.scrapersSessionId)
   const notFoundIds = uniqueIds.filter((id) => !foundMap.has(id))
 
   return {
@@ -39,5 +39,6 @@ export async function runApiDbCheck(
     notFoundIds,
     polygonResults,
     apiEntityMap,
+    suspectedBlock: polygonResults.some((r) => r.suspectedBlock),
   }
 }

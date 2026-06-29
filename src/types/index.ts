@@ -23,6 +23,7 @@ export interface ApiDbCheckResult {
   polygonResults: PolygonCheckResult[]
   /** Full API response objects keyed by entity ID — used as apiSnapshot in AI comparison */
   apiEntityMap: Map<string, Record<string, unknown>>
+  suspectedBlock: boolean    // true if any polygon in any polygonResult has suspectedBlock=true
 }
 
 export interface PolygonCheckResult {
@@ -31,6 +32,8 @@ export interface PolygonCheckResult {
   apiEntityIds: string[]
   foundInDb: string[]
   notFoundInDb: string[]
+  failedPolygons: string[]   // polygon IDs that failed after retry
+  suspectedBlock: boolean     // true if failedPolygons.length > 0
 }
 
 export interface DeltaCheckResult {

@@ -11,6 +11,24 @@ export interface PolygonBounds {
 export interface ScraperApiAdapter {
   appId: string
   fetchEntities(polygon: PolygonBounds, entityType: EntityType): Promise<ScraperEntity[]>
+  /** Per-entity strategy. Default (when omitted): 'all'. */
+  polygonStrategy?(entityType: EntityType): 'all' | 'center_only'
+  /** Delay in ms between polygon requests (base; jitter applied externally). Default: 500. */
+  interPolygonDelayMs?: number
+}
+
+/** Thrown by an adapter when the API returns a structurally unexpected response
+ *  (e.g. null oa_list for zones, null data for pricings) that may indicate
+ *  rate-limiting or a block. */
+export class ApiUnexpectedResponseError extends Error {
+  constructor(
+    public readonly entityType: string,
+    public readonly polygonId: string,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'ApiUnexpectedResponseError'
+  }
 }
 
 export type AdapterRegistry = Map<string, ScraperApiAdapter>
