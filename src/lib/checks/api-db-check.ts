@@ -42,10 +42,13 @@ export async function runApiDbCheck(
         await sleep(5000)
         try {
           entities = await adapter.fetchEntities(bounds, entityType)
-        } catch {
-          // Retry also failed — mark this polygon as failed
-          polygonFailed = true
-          entities = []
+        } catch (retryErr) {
+          if (retryErr instanceof ApiUnexpectedResponseError) {
+            polygonFailed = true
+            entities = []
+          } else {
+            throw retryErr
+          }
         }
       } else {
         throw err // Non-block errors propagate
