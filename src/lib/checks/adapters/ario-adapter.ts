@@ -86,14 +86,16 @@ export class ArioScraperApiAdapter implements ScraperApiAdapter {
     // Separate snapshots so each entity only has its own fee field — avoids
     // the unlock entity showing timeFeeAmount (and vice versa) in the diff view.
     const priceData = await this.post('/app/api/pay/pricelist', { latitude: lat, longitude: lon }, account)
-    const raw = (priceData?.data ?? priceData) as Record<string, unknown>
-    if (raw === null || raw === undefined) {
+    // Check the inner data key before ?? coalescing — { data: null } would otherwise
+    // coalesce to priceData (a non-null object) and the null would go undetected.
+    if (priceData?.data === null) {
       throw new ApiUnexpectedResponseError(
         'pricings',
         polygon.polygonId,
-        `pricings API returned null/undefined data`,
+        'pricings API returned null data',
       )
     }
+    const raw = (priceData?.data ?? priceData) as Record<string, unknown>
     if (raw && typeof raw === 'object') {
       const { unlockFeeAmount, timeFeeAmount, ...sharedFields } = raw as Record<string, unknown> & {
         unlockFeeAmount?: unknown; timeFeeAmount?: unknown

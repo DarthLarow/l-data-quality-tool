@@ -32,7 +32,7 @@ export async function runApiDbCheck(
     }
 
     // Fetch with one retry on ApiUnexpectedResponseError
-    let entities: ScraperEntity[]
+    let entities: ScraperEntity[] = []
     let polygonFailed = false
     try {
       entities = await adapter.fetchEntities(bounds, entityType)
