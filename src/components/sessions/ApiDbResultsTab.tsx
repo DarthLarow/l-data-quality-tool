@@ -13,6 +13,7 @@ function pctColor(p: number) {
 
 export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
   const [missOpen, setMissOpen] = useState(false)
+  const [failedOpen, setFailedOpen] = useState(false)
 
   const pct = summary.totalUniqueInApi > 0
     ? Math.round((summary.totalFoundInDb / summary.totalUniqueInApi) * 100)
@@ -45,6 +46,56 @@ export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
         <span style={{ color: 'var(--dq-text-8)' }}>·</span>
         <span style={{ color: pctColor(pct), fontWeight: 500 }}>{pct}%</span>
       </div>
+
+      {/* Suspected block warning */}
+      {summary.suspectedBlock && (
+        <div
+          className="mt-[10px] rounded-[6px] px-[10px] py-[6px] font-mono text-[12px]"
+          style={{
+            background: 'var(--dq-amber-bg)',
+            border:     '1px solid color-mix(in srgb, var(--dq-amber) 25%, transparent)',
+            color:      'var(--dq-amber)',
+          }}
+        >
+          ⚠ {summary.failedPolygons.length} polygon{summary.failedPolygons.length !== 1 ? 's' : ''} failed after retry — results may be incomplete (suspected rate limit)
+        </div>
+      )}
+
+      {/* Failed polygons toggle */}
+      {summary.suspectedBlock && summary.failedPolygons.length > 0 && (
+        <div className="mt-[10px]">
+          <button
+            onClick={() => setFailedOpen((o) => !o)}
+            className="rounded-[6px] px-[10px] py-[5px] font-mono text-[11.5px] transition-colors"
+            style={{
+              background: 'var(--dq-amber-bg)',
+              border:     '1px solid color-mix(in srgb, var(--dq-amber) 25%, transparent)',
+              color:      'var(--dq-amber)',
+              cursor:     'pointer',
+            }}
+          >
+            {failedOpen ? '▾' : '▶'} {summary.failedPolygons.length} failed polygon{summary.failedPolygons.length !== 1 ? 's' : ''}
+          </button>
+
+          {failedOpen && (
+            <div className="mt-[8px] flex flex-wrap gap-[5px]">
+              {summary.failedPolygons.map((polygonId) => (
+                <span
+                  key={polygonId}
+                  className="rounded-[5px] px-[8px] py-[2px] font-mono text-[11px]"
+                  style={{
+                    background: 'var(--dq-amber-bg)',
+                    border:     '1px solid color-mix(in srgb, var(--dq-amber) 20%, transparent)',
+                    color:      'var(--dq-amber)',
+                  }}
+                >
+                  {polygonId}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Missing IDs toggle */}
       {notFoundIds.length > 0 && (
