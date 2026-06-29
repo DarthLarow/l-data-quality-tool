@@ -56,12 +56,14 @@ model PolygonCheck {
 }
 
 model EntityCheckSummary {
-  id                String @id @default(cuid())
+  id                String   @id @default(cuid())
   checkSessionId    String
   entityType        String
   totalUniqueInApi  Int
   totalFoundInDb    Int
   totalNotFoundInDb Int
+  failedPolygons    String[] @default([])
+  suspectedBlock    Boolean  @default(false)
 
   checkSession CheckSession @relation(fields: [checkSessionId], references: [id], onDelete: Cascade)
 }

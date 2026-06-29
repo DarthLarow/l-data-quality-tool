@@ -52,6 +52,8 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
               totalUniqueInApi:  result.totalUniqueInApi,
               totalFoundInDb:    result.totalFoundInDb,
               totalNotFoundInDb: result.totalNotFoundInDb,
+              failedPolygons:    result.polygonResults.flatMap((p) => p.failedPolygons),
+              suspectedBlock:    result.suspectedBlock,
             },
           })
 
@@ -72,7 +74,7 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
         // Field comparison — all matched entities, no sampling limit
         if (checks.has('ai')) {
           const allFoundIds = [...new Set(result.polygonResults.flatMap((p) => p.foundInDb))]
-          const dbMap       = await findEntitiesByIds(allFoundIds, entityType, input.appId)
+          const dbMap       = await findEntitiesByIds(allFoundIds, entityType, input.appId, input.scrapersSessionId)
 
           for (const entityId of allFoundIds) {
             const dbSnapshot  = dbMap.get(entityId)
