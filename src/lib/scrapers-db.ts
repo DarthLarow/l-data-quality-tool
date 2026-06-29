@@ -75,18 +75,34 @@ export async function findEntitiesByIds(
   entityIds: string[],
   entityType: EntityType,
   appId?: string,
+  sessionId?: number,
 ): Promise<Map<string, Record<string, unknown>>> {
   if (entityIds.length === 0) return new Map()
   const { table, idCol } = ENTITY_TABLE_MAP[entityType]
-  const rows = await scrapersQuery<Record<string, unknown>>(
-    appId
-      ? `SELECT * FROM ${table} WHERE ${idCol} = ANY($1::text[]) AND provider = $2`
-      : `SELECT * FROM ${table} WHERE ${idCol} = ANY($1::text[])`,
-    appId ? [entityIds, appId] : [entityIds],
-  )
-  return new Map(
-    rows.map((r) => [r[idCol] as string, r]),
-  )
+
+  let sql: string
+  let params: unknown[]
+
+  if (sessionId !== undefined && appId !== undefined) {
+    // Filter to a specific scraper session so the snapshot reflects the correct collection run.
+    // DISTINCT ON picks one row per entity when multiple collection tasks in the same session collected it.
+    sql = `SELECT DISTINCT ON (e.${idCol}) e.*
+           FROM ${table} e
+           JOIN collection_tasks ct ON ct.id = e.collection_task_id
+           WHERE e.${idCol} = ANY($1::text[])
+             AND e.provider = $2
+             AND ct.session_id = $3`
+    params = [entityIds, appId, sessionId]
+  } else if (appId !== undefined) {
+    sql = `SELECT * FROM ${table} WHERE ${idCol} = ANY($1::text[]) AND provider = $2`
+    params = [entityIds, appId]
+  } else {
+    sql = `SELECT * FROM ${table} WHERE ${idCol} = ANY($1::text[])`
+    params = [entityIds]
+  }
+
+  const rows = await scrapersQuery<Record<string, unknown>>(sql, params)
+  return new Map(rows.map((r) => [r[idCol] as string, r]))
 }
 
 export interface PolygonBounds {
