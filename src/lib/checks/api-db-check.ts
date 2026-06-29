@@ -1,6 +1,9 @@
 import { findEntitiesByIds, resolvePolygons } from '@/lib/scrapers-db'
 import type { ScraperApiAdapter } from './adapters/scraper-adapter'
-import type { CheckSessionInput, EntityType, ApiDbCheckResult, PolygonCheckResult } from '@/types'
+import { ApiUnexpectedResponseError } from './adapters/scraper-adapter'
+import type { CheckSessionInput, EntityType, ApiDbCheckResult, PolygonCheckResult, ScraperEntity } from '@/types'
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 export async function runApiDbCheck(
   input: CheckSessionInput,
@@ -11,9 +14,58 @@ export async function runApiDbCheck(
   const allApiIds = new Set<string>()
   const apiEntityMap = new Map<string, Record<string, unknown>>()
 
-  const polygons = await resolvePolygons(input.appId, input.polygonIds)
-  for (const bounds of polygons) {
-    const entities = await adapter.fetchEntities(bounds, entityType)
+  const allPolygons = await resolvePolygons(input.appId, input.polygonIds)
+  const strategy = adapter.polygonStrategy?.(entityType) ?? 'all'
+  const centerPolygons = allPolygons.filter(
+    (p) => p.polygonType?.['is_center'] === 'true' || p.polygonType?.['is_center'] === true,
+  )
+  const polygons = strategy === 'center_only'
+    ? (centerPolygons.length > 0 ? centerPolygons.slice(0, 1) : allPolygons.slice(0, 1))
+    : allPolygons
+
+  for (const [i, bounds] of polygons.entries()) {
+
+    // Inter-polygon delay (skip for first polygon)
+    if (i > 0) {
+      const baseDelay = adapter.interPolygonDelayMs ?? 500
+      await sleep(baseDelay + Math.random() * baseDelay * 0.5)
+    }
+
+    // Fetch with one retry on ApiUnexpectedResponseError
+    let entities: ScraperEntity[]
+    let polygonFailed = false
+    try {
+      entities = await adapter.fetchEntities(bounds, entityType)
+    } catch (err) {
+      if (err instanceof ApiUnexpectedResponseError) {
+        // Retry once after 5 seconds
+        await sleep(5000)
+        try {
+          entities = await adapter.fetchEntities(bounds, entityType)
+        } catch {
+          // Retry also failed — mark this polygon as failed
+          polygonFailed = true
+          entities = []
+        }
+      } else {
+        throw err // Non-block errors propagate
+      }
+    }
+
+    if (polygonFailed) {
+      polygonResults.push({
+        polygonId: bounds.polygonId,
+        entityType,
+        apiEntityIds: [],
+        foundInDb: [],
+        notFoundInDb: [],
+        failedPolygons: [bounds.polygonId],
+        suspectedBlock: true,
+      })
+      continue
+    }
+
+    // Normal path
     const apiEntityIds = entities.map((e) => e.id)
     for (const entity of entities) {
       allApiIds.add(entity.id)
@@ -24,7 +76,15 @@ export async function runApiDbCheck(
     const foundInDb    = apiEntityIds.filter((id) => foundMap.has(id))
     const notFoundInDb = apiEntityIds.filter((id) => !foundMap.has(id))
 
-    polygonResults.push({ polygonId: bounds.polygonId, entityType, apiEntityIds, foundInDb, notFoundInDb, failedPolygons: [], suspectedBlock: false })
+    polygonResults.push({
+      polygonId: bounds.polygonId,
+      entityType,
+      apiEntityIds,
+      foundInDb,
+      notFoundInDb,
+      failedPolygons: [],
+      suspectedBlock: false,
+    })
   }
 
   const uniqueIds = Array.from(allApiIds)
