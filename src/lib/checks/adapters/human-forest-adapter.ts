@@ -134,8 +134,40 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
 
   // ─── Entity fetchers (stubs — filled in Tasks 3–5) ──────────────────────────
 
-  private async fetchDockless(_polygon: PolygonBounds, _account: HumanForestAccount): Promise<ScraperEntity[]> {
-    throw new Error('not implemented')
+  private async fetchDockless(polygon: PolygonBounds, account: HumanForestAccount): Promise<ScraperEntity[]> {
+    const bb = this.parseBoundBox(polygon)
+    const params = this.bboxParams(bb)
+
+    // Step 1: vehicle types → build id→title map
+    const vtData = await this.get(`${VEH_TYPES_URL}?${params}`, account) as Record<string, unknown>
+    if (vtData['status'] !== 'OK' || !Array.isArray(vtData['data'])) {
+      throw new ApiUnexpectedResponseError(
+        'dockless', polygon.polygonId,
+        `vehicle types returned unexpected structure: status=${vtData['status']}`,
+      )
+    }
+    const vehicleTypeMap = new Map<string, string>(
+      (vtData['data'] as Array<{ vehicleTypeId: number; title: string }>)
+        .map((vt) => [String(vt.vehicleTypeId), vt.title]),
+    )
+
+    // Step 2: vehicles
+    const vehicles = await this.get(`${VEHICLES_URL}?${params}`, account)
+    if (!Array.isArray(vehicles)) {
+      throw new ApiUnexpectedResponseError(
+        'dockless', polygon.polygonId,
+        'vehicles endpoint returned non-array response',
+      )
+    }
+
+    return (vehicles as Array<Record<string, unknown>>).map((v) => ({
+      ...v,
+      id:       String(v['id']),
+      battery:  v['fuelLevel'] ?? null,
+      lat:      v['lat']       ?? null,
+      lon:      v['lon']       ?? null,
+      category: vehicleTypeMap.get(String(v['vehicleTypeId'] ?? '')) ?? null,
+    }))
   }
 
   private async fetchPricings(_polygon: PolygonBounds, _account: HumanForestAccount): Promise<ScraperEntity[]> {
