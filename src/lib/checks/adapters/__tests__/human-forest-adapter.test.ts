@@ -201,4 +201,113 @@ describe('HumanForestScraperApiAdapter', () => {
       expect(result[0]!['name']).toBe('unlock')
     })
   })
+
+  describe('fetchEntities zones', () => {
+    const mockAccount = {
+      email: 'test@example.com', password: 'pw',
+      access_token: 'tok', refresh_token: 'ref',
+    }
+    const mockZoneContext = { location_id: '1', types: [0, 1, 2, 5, 6] }
+
+    const territoriesResponse = [
+      {
+        type: 0,
+        territory: {
+          type: 'FeatureCollection',
+          features: [
+            {
+              type: 'Feature',
+              geometry: { type: 'Polygon', coordinates: [[[-0.136679, 51.390344], [-0.141879, 51.389349], [-0.136679, 51.390344]]] },
+              properties: { name: 'BUSINESS_AREA - ba_default', type: 0, 'line-color': '#000000', 'fill-opacity': 0 },
+            },
+          ],
+        },
+      },
+      {
+        type: 1,
+        territory: {
+          type: 'FeatureCollection',
+          features: [], // empty → no rows
+        },
+      },
+    ]
+
+    it('returns one entity per GeoJSON feature across all territory entries', async () => {
+      mockGetAccount.mockResolvedValue(mockAccount)
+      mockGetZoneContext.mockResolvedValue(mockZoneContext)
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ status: 200, json: async () => territoriesResponse }),
+      )
+
+      const adapter = new HumanForestScraperApiAdapter()
+      const result = await adapter.fetchEntities(MOCK_POLYGON, 'zones')
+
+      expect(result).toHaveLength(1)
+      expect(result[0]).toMatchObject({
+        zoneName:        'BUSINESS_AREA - ba_default',
+        areaType:        'BUSINESS_AREA',
+        areaDescription: 'BUSINESS_AREA - ba_default',
+        areaPriority:    0,
+        areaZoneId:      '0',
+        geometryType:    'Polygon',
+      })
+      expect(typeof result[0]!['id']).toBe('string')
+      expect((result[0]!['id'] as string)).toMatch(/^[0-9a-f-]{36}$/)
+      expect(result[0]!['areaRules']).toBe(JSON.stringify({ name: 'BUSINESS_AREA - ba_default', type: 0, 'line-color': '#000000', 'fill-opacity': 0 }))
+
+      // Verify the URL used the location_id and types from DB
+      const fetchCalls = vi.mocked(fetch).mock.calls
+      expect(fetchCalls[0]![0]).toContain('location_id=1')
+      expect(fetchCalls[0]![0]).toContain('types=0')
+      expect(fetchCalls[0]![0]).toContain('types=5')
+    })
+
+    it('uses fallback id when feature has no name', async () => {
+      mockGetAccount.mockResolvedValue(mockAccount)
+      mockGetZoneContext.mockResolvedValue(mockZoneContext)
+      const noName = [{
+        type: 2,
+        territory: {
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [] },
+            properties: { type: 2 }, // no name field
+          }],
+        },
+      }]
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ status: 200, json: async () => noName }),
+      )
+
+      const adapter = new HumanForestScraperApiAdapter()
+      const result = await adapter.fetchEntities(MOCK_POLYGON, 'zones')
+      expect(result).toHaveLength(1)
+      expect((result[0]!['id'] as string)).toMatch(/^[0-9a-f-]{36}$/) // fallback uuid
+      expect(result[0]!['zoneName']).toBeNull()
+    })
+
+    it('throws when zone context not found in scrapers_db', async () => {
+      mockGetAccount.mockResolvedValue(mockAccount)
+      mockGetZoneContext.mockResolvedValue(null)
+
+      const adapter = new HumanForestScraperApiAdapter()
+      await expect(adapter.fetchEntities(MOCK_POLYGON, 'zones')).rejects.toThrow(
+        'No Human Forest zone context found for polygon 42',
+      )
+    })
+
+    it('throws ApiUnexpectedResponseError when territories response is not an array', async () => {
+      mockGetAccount.mockResolvedValue(mockAccount)
+      mockGetZoneContext.mockResolvedValue(mockZoneContext)
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ status: 200, json: async () => ({ error: 'blocked' }) }),
+      )
+
+      const adapter = new HumanForestScraperApiAdapter()
+      await expect(adapter.fetchEntities(MOCK_POLYGON, 'zones')).rejects.toBeInstanceOf(
+        (await import('@/lib/checks/adapters/scraper-adapter')).ApiUnexpectedResponseError,
+      )
+    })
+  })
 })

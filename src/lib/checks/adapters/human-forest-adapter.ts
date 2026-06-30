@@ -1,4 +1,4 @@
-import { getHumanForestAccount } from '@/lib/scrapers-db'
+import { getHumanForestAccount, getHumanForestZoneContext } from '@/lib/scrapers-db'
 import { uuidv5 } from '@/lib/uuid5'
 import type { ScraperApiAdapter, PolygonBounds } from './scraper-adapter'
 import { ApiUnexpectedResponseError } from './scraper-adapter'
@@ -235,8 +235,52 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
     return results
   }
 
-  private async fetchZones(_polygon: PolygonBounds, _account: HumanForestAccount): Promise<ScraperEntity[]> {
-    throw new Error('not implemented')
+  private async fetchZones(polygon: PolygonBounds, account: HumanForestAccount): Promise<ScraperEntity[]> {
+    const ctx = await getHumanForestZoneContext(polygon.polygonId)
+    if (!ctx) {
+      throw new Error(`No Human Forest zone context found for polygon ${polygon.polygonId}`)
+    }
+    const typesParams = ctx.types.map((t) => `types=${t}`).join('&')
+    const url = `${ZONES_URL}?location_id=${ctx.location_id}&${typesParams}`
+    const data = await this.get(url, account)
+
+    if (!Array.isArray(data)) {
+      throw new ApiUnexpectedResponseError(
+        'zones', polygon.polygonId,
+        'territories endpoint returned non-array response',
+      )
+    }
+
+    const results: ScraperEntity[] = []
+
+    for (const entry of data as Array<{ type: number; territory: { features: unknown[] } }>) {
+      const features = entry.territory?.features ?? []
+      features.forEach((feature, idx) => {
+        const f = feature as Record<string, unknown>
+        const props = (f['properties'] as Record<string, unknown>) ?? {}
+        const geom  = (f['geometry']  as Record<string, unknown>) ?? {}
+        const name  = (props['name'] as string) ?? null
+        const idSrc = name ?? `${entry.type}_${idx}`
+
+        const nameParts = name ? name.split(' - ', 2) : []
+
+        results.push({
+          id:                  uuidv5(idSrc),
+          zoneName:            name,
+          zoneId:              uuidv5(idSrc),
+          type:                f['type'] ?? null,
+          geometryType:        geom['type']        ?? null,
+          geometryCoordinates: geom['coordinates'] ?? null,
+          areaType:            nameParts[0] ?? null,
+          areaDescription:     name,
+          areaPriority:        props['type'] != null ? (props['type'] as number) : null,
+          areaZoneId:          props['type'] != null ? String(props['type']) : null,
+          areaRules:           Object.keys(props).length > 0 ? JSON.stringify(props) : null,
+        })
+      })
+    }
+
+    return results
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
