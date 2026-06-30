@@ -71,9 +71,18 @@ Sync route завжди конвертує: `appId = app.name`.
 скрапера і перевіряє чи кожна отримана сутність присутня в `scrapers_db` (пошук по ID,
 без прив'язки до полігону). Напрямок тільки API→БД.
 
+Особливості реалізації:
+- Адаптер визначає стратегію обходу полігонів через `polygonStrategy(entityType)`:
+  `'all'` (кожен полігон) або `'center_only'` (тільки центральна точка).
+- Між запитами — затримка `interPolygonDelayMs` (базова) + jitter.
+- При помилці `ApiUnexpectedResponseError` (наприклад, `null` там де очікується масив) —
+  повторна спроба. Після вичерпання спроб полігон записується в `failedPolygons`,
+  `suspectedBlock = true` для цього типу сутностей. UI відображає попередження.
+
 **Delta check** — перевірка тренду: порівнює кількість сутностей між двома сесіями
 в `scrapers_db` без залучення API. Виявляє аномальні зміни (наприклад, 1000 самокатів
-→ 100). ⚠️ Конкретні SQL-запити — прототип, уточнюються з розробниками скраперів.
+→ 100). Попередня сесія автоматично підбирається (остання перед поточною глобально).
+⚠️ Конкретні SQL-запити — прототип, уточнюються з розробниками скраперів.
 
 ---
 
@@ -81,10 +90,40 @@ Sync route завжди конвертує: `appId = app.name`.
 
 | Сторінка | Опис |
 |----------|------|
-| `/` | Dashboard: список скраперів + три графіки трендів (Total / Completeness / AI Quality), фільтр по діапазону днів |
+| `/` | Dashboard: список скраперів + три графіки трендів (Total / Completeness / AI Quality) + delta колонка, фільтр по діапазону днів |
 | `/sessions/new` | Форма запуску перевірки (environment, scraper, типи перевірок, полігони, AI sample size) |
-| `/sessions/[id]` | Результати сесії: API→DB, Delta, AI-оцінки, manual review (side-by-side JSON) |
+| `/sessions/[id]` | Результати сесії: вкладки API→DB / Delta / AI / Manual Review (side-by-side JSON) + кнопка Rerun |
 | `/config` | Sync Scrapers + per-scraper auto-check конфіг + alert thresholds |
+
+---
+
+## Структура якість БД (quality_db)
+
+| Модель | Призначення |
+|--------|------------|
+| `Scraper` | Синхронізовані скрапери; `appId` = `apps.name` зі scrapers_db |
+| `CheckSession` | Одна запущена перевірка; `triggeredBy`: `"manual"` \| `"auto"` |
+| `PolygonCheck` | Результат перевірки одного полігона для одного типу сутностей |
+| `EntityCheckSummary` | Агрегат по типу сутностей: `totalUniqueInApi`, `totalFoundInDb`, `totalNotFoundInDb`, `failedPolygons[]`, `suspectedBlock` |
+| `SessionDeltaCheck` | Delta між двома scrapers-сесіями: `deltaPercent`, `deltaFlag` |
+| `AiComparison` | Пара API/DB снепшотів з вердиктом та поясненням AI |
+| `AlertThreshold` | Порогові значення (%) та ліміти кількості для warning/critical |
+| `AutoCheckConfig` | Збережена конфігурація авто-запуску для скрапера |
+
+---
+
+## Адаптери скраперів
+
+`src/lib/checks/adapters/` — точка розширення для нових скраперів.
+
+| Файл | Призначення |
+|------|------------|
+| `scraper-adapter.ts` | Інтерфейс `ScraperApiAdapter`, `ApiUnexpectedResponseError`, `adapterRegistry` |
+| `ario-adapter.ts` | Повна реалізація для Ario (GMS OAuth → Ario token → 4 типи сутностей) |
+| `mock-adapter.ts` | Мок для тестів |
+
+Зареєстровані скрапери: `adapterRegistry` в `scraper-adapter.ts`.
+Покроковий план додавання нового скрапера: `docs/adding-new-scraper.md`
 
 ---
 
@@ -98,8 +137,8 @@ Sync route завжди конвертує: `appId = app.name`.
    - полігони: випадковий / за ID / за містом (всі або випадковий)
    - типи сутностей (всі 4 доступні; нульовий результат якщо скрапер не підтримує)
    - кількість пар для AI-аналізу (default: 5, max: 20)
-   - попередня сесія для порівняння (якщо Delta увімкнено)
-5. Переглядати результати на `/sessions/[id]`
+   - попередня сесія для Delta (підбирається автоматично, можна змінити)
+5. Переглядати результати на `/sessions/[id]`; при потребі — **Rerun**
 
 ---
 
@@ -135,4 +174,4 @@ Sync route завжди конвертує: `appId = app.name`.
 - **Уточнення Delta SQL** — погодити конкретні таблиці/запити з командою розробників скраперів
 - **Slack-алерти** — при критичних дельтах або великій кількості відсутніх сутностей
 - **Автозапуск через webhook** — `POST /api/webhooks/session-complete` запускає перевірку
-  за збереженим `AutoCheckConfig` (потребує узгодження з командою)
+  за збереженим `AutoCheckConfig`; поле `triggeredBy = "auto"` вже є в схемі
