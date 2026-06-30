@@ -170,8 +170,69 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
     }))
   }
 
-  private async fetchPricings(_polygon: PolygonBounds, _account: HumanForestAccount): Promise<ScraperEntity[]> {
-    throw new Error('not implemented')
+  private readonly CURRENCY_MAP: Record<string, string> = { '£': 'GBP', '$': 'USD', '€': 'EUR' }
+
+  private parseCurrency(priceStr: string): string | null {
+    const sym = priceStr.replace(/[^£$€]/g, '')
+    return this.CURRENCY_MAP[sym] ?? null
+  }
+
+  private async fetchPricings(polygon: PolygonBounds, account: HumanForestAccount): Promise<ScraperEntity[]> {
+    const results: ScraperEntity[] = []
+
+    // Step 1: bundles
+    const bundleData = await this.get(BUNDLES_URL, account) as Record<string, unknown>
+    if (bundleData['success'] !== true) {
+      throw new ApiUnexpectedResponseError(
+        'pricings', polygon.polygonId,
+        'bundles endpoint returned success: false',
+      )
+    }
+    const items = ((bundleData['data'] as Record<string, unknown>)['items'] as Array<Record<string, unknown>>) ?? []
+    for (const item of items) {
+      results.push({
+        id:                   item['id'] as string,
+        pricingPlanName:      item['title'] as string,
+        name:                 'per_minute',
+        amt:                  (item['priceValue'] as number) / (item['creditsValue'] as number),
+        currency:             this.parseCurrency(item['price'] as string),
+        description:          item['description'] ?? null,
+        expirationTimeSeconds: (item['metadata'] as Record<string, unknown> | null)?.['expirationTimeSeconds'] ?? null,
+      })
+    }
+
+    // Step 2: vehicle type pricing (same endpoint as dockless step 1)
+    const bb = this.parseBoundBox(polygon)
+    const vtData = await this.get(`${VEH_TYPES_URL}?${this.bboxParams(bb)}`, account) as Record<string, unknown>
+    if (vtData['status'] !== 'OK' || !Array.isArray(vtData['data'])) {
+      throw new ApiUnexpectedResponseError(
+        'pricings', polygon.polygonId,
+        `vehicle types returned unexpected structure during pricing: status=${vtData['status']}`,
+      )
+    }
+
+    type VehicleType = { vehicleTypeId: number; title: string; unlockFee: string; pricingTime: string; pricingParking: string; pricing: { pricePerMinute: number; pricePerParkingMinute: number; unlockFee: number; currencyCode: string } }
+    const rows: Array<[string, string, number]> = [] // [name, rawStr, amt]
+    for (const vt of vtData['data'] as VehicleType[]) {
+      rows.push(['unlock',     vt.unlockFee,      vt.pricing.unlockFee])
+      rows.push(['per_minute', vt.pricingTime,    vt.pricing.pricePerMinute])
+      rows.push(['parking',    vt.pricingParking, vt.pricing.pricePerParkingMinute])
+
+      for (const [name, rawStr, amt] of rows) {
+        const currency = this.parseCurrency(rawStr)
+        if (currency === null) continue // no currency symbol → skip (Free / N/A)
+        results.push({
+          id:          uuidv5(`human_forest_${vt.vehicleTypeId}_${name}`),
+          name,
+          amt,
+          currency,
+          vehicleType: vt.title,
+        })
+      }
+      rows.length = 0
+    }
+
+    return results
   }
 
   private async fetchZones(_polygon: PolygonBounds, _account: HumanForestAccount): Promise<ScraperEntity[]> {
