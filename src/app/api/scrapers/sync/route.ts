@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/quality-db'
 import { getScrapersApps, getCitiesForApps } from '@/lib/scrapers-db'
-import { adapterRegistry } from '@/lib/checks/adapters/scraper-adapter'
+import { getAdapterRegistry } from '@/lib/checks/adapters/scraper-adapter'
 import type { EntityType } from '@/types'
 
 // All entity types supported by default; refine per-scraper when API docs are available
@@ -32,7 +32,7 @@ export async function POST() {
       apps.map((app) => {
         const appId    = app.name
         const cities   = (citiesMap.get(appId) ?? []).map((c) => c.name)
-        const isActive = adapterRegistry.has(appId)
+        const isActive = getAdapterRegistry().has(appId)
         return prisma.scraper.upsert({
           where:  { appId },
           update: { name: app.title ?? app.name, cities, lastSyncedAt: new Date(), isActive },

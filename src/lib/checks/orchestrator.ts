@@ -3,7 +3,7 @@ import { runApiDbCheck } from './api-db-check'
 import { runDeltaCheck } from './delta-check'
 import { compareEntityFields } from './field-compare'
 import { findEntitiesByIds, findPreviousScrapersSession, pingScrapersDb } from '@/lib/scrapers-db'
-import { adapterRegistry } from './adapters/scraper-adapter'
+import { getAdapterRegistry } from './adapters/scraper-adapter'
 import type { CheckSessionInput, EntityType } from '@/types'
 
 export async function runCheckSession(input: CheckSessionInput): Promise<string> {
@@ -29,7 +29,7 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
 
   try {
     const checks  = new Set(input.checksEnabled)
-    const adapter = adapterRegistry.get(input.appId)
+    const adapter = getAdapterRegistry().get(input.appId)
 
     // Auto-detect previous session if delta is enabled but no previous session was provided
     const previousScrapersSessionId =

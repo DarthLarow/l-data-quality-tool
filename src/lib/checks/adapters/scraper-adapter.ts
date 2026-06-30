@@ -36,29 +36,20 @@ export type AdapterRegistry = Map<string, ScraperApiAdapter>
 
 // Registry key = scrapers_db.apps.name (synced into quality_db.Scraper.appId).
 // Confirmed: Ario app name is 'ario' (id=7 in stage scrapers_db).
-// Use lazy initialization to avoid circular dependency issues with ario-adapter.ts
-function createAdapterRegistry(): AdapterRegistry {
-  return new Map<string, ScraperApiAdapter>([
-    ['ario', new ArioScraperApiAdapter()],
-    ['human_forest', new HumanForestScraperApiAdapter()],
-  ])
-}
-
+//
+// Lazy factory avoids circular-import issues: ario-adapter.ts and
+// human-forest-adapter.ts both import from this file, so instantiating their
+// classes at module-evaluation time would see undefined constructors in some
+// module systems (e.g. Vitest). The factory defers instantiation until first
+// call, by which point all modules are fully evaluated.
 let _registry: AdapterRegistry | null = null
 
 export function getAdapterRegistry(): AdapterRegistry {
   if (!_registry) {
-    _registry = createAdapterRegistry()
+    _registry = new Map<string, ScraperApiAdapter>([
+      ['ario', new ArioScraperApiAdapter()],
+      ['human_forest', new HumanForestScraperApiAdapter()],
+    ])
   }
   return _registry
 }
-
-// For backwards compatibility with existing code
-export const adapterRegistry = new Proxy({} as AdapterRegistry, {
-  get(target, prop: string | symbol, receiver) {
-    return Reflect.get(getAdapterRegistry(), prop, receiver)
-  },
-  set(target, prop: string | symbol, value) {
-    return Reflect.set(getAdapterRegistry(), prop, value)
-  },
-})
