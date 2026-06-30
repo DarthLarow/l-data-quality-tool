@@ -1,5 +1,6 @@
 import type { EntityType, ScraperEntity } from '@/types'
 import { ArioScraperApiAdapter } from './ario-adapter'
+import { HumanForestScraperApiAdapter } from './human-forest-adapter'
 
 export interface PolygonBounds {
   polygonId:   string
@@ -35,6 +36,29 @@ export type AdapterRegistry = Map<string, ScraperApiAdapter>
 
 // Registry key = scrapers_db.apps.name (synced into quality_db.Scraper.appId).
 // Confirmed: Ario app name is 'ario' (id=7 in stage scrapers_db).
-export const adapterRegistry: AdapterRegistry = new Map([
-  ['ario', new ArioScraperApiAdapter()],
-])
+// Use lazy initialization to avoid circular dependency issues with ario-adapter.ts
+function createAdapterRegistry(): AdapterRegistry {
+  return new Map<string, ScraperApiAdapter>([
+    ['ario', new ArioScraperApiAdapter()],
+    ['human_forest', new HumanForestScraperApiAdapter()],
+  ])
+}
+
+let _registry: AdapterRegistry | null = null
+
+export function getAdapterRegistry(): AdapterRegistry {
+  if (!_registry) {
+    _registry = createAdapterRegistry()
+  }
+  return _registry
+}
+
+// For backwards compatibility with existing code
+export const adapterRegistry = new Proxy({} as AdapterRegistry, {
+  get(target, prop: string | symbol, receiver) {
+    return Reflect.get(getAdapterRegistry(), prop, receiver)
+  },
+  set(target, prop: string | symbol, value) {
+    return Reflect.set(getAdapterRegistry(), prop, value)
+  },
+})
