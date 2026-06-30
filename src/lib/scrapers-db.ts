@@ -258,3 +258,56 @@ export async function getCitiesForApps(
   }
   return map
 }
+
+export interface HumanForestAccountRow {
+  email:         string
+  password:      string
+  access_token:  string | null
+  refresh_token: string
+}
+
+export async function getHumanForestAccount(): Promise<HumanForestAccountRow | null> {
+  const rows = await scrapersQuery<HumanForestAccountRow>(
+    `SELECT a.email,
+            a.password,
+            a.access_token,
+            a.refresh_token
+     FROM accounts a
+     JOIN apps ap ON ap.id = a.app_id
+     WHERE ap.name = 'human_forest'
+       AND a.is_active = true
+     LIMIT 1`,
+  )
+  return rows[0] ?? null
+}
+
+export interface HumanForestZoneContextRow {
+  location_id: string   // pg returns as string; parse to int in adapter
+  types:       number[] // parsed JSONB array
+}
+
+export async function getHumanForestZoneContext(
+  polygonId: string,
+): Promise<HumanForestZoneContextRow | null> {
+  // Looks up location_id and types from the most recent collection_task
+  // that belongs to the same city as the given polygon.
+  // This allows the adapter to work for any future city Human Forest may expand to.
+  const rows = await scrapersQuery<HumanForestZoneContextRow>(
+    `SELECT ct.extra_context->>'location_id' AS location_id,
+            ARRAY(
+              SELECT jsonb_array_elements_text(ct.extra_context->'types')::int
+            ) AS types
+     FROM collection_tasks ct
+     JOIN city_polygons cp ON cp.id = ct.city_polygon_id
+     JOIN apps a ON a.id = ct.app_id
+     WHERE a.name = 'human_forest'
+       AND ct.extra_context->>'location_id' IS NOT NULL
+       AND cp.city_id = (
+             SELECT city_id FROM city_polygons WHERE id::text = $1 LIMIT 1
+           )
+     ORDER BY ct.id DESC
+     LIMIT 1`,
+    [polygonId],
+  )
+  return rows[0] ?? null
+}
