@@ -95,6 +95,7 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
       await this.signIn(account)
       return
     }
+    if (!res.ok) throw new Error(`Human Forest refresh-token failed: HTTP ${res.status}`)
     const data = (await res.json() as Record<string, unknown>)
     const tokens = data['data'] as Record<string, unknown>
     account.accessToken  = tokens['accessToken']  as string
