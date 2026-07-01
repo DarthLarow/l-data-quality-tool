@@ -73,10 +73,10 @@ describe('compareEntityFields — ario / dockless', () => {
     expect(r.verdict).toBe('Same')
   })
 
-  it('Different — GPS exceeds 5km threshold (~8km)', () => {
+  it('Different — GPS exceeds 10km threshold (~12km)', () => {
     const r = compareEntityFields(
       { ...BASE_API, latitude: 50.4501, longitude: 30.5234 },
-      { ...BASE_DB,  location_lat: 50.5200, location_lng: 30.5234 },
+      { ...BASE_DB,  location_lat: 50.5600, location_lng: 30.5234 },
       'dockless', 'ario',
     )
     expect(r.verdict).toBe('Different')

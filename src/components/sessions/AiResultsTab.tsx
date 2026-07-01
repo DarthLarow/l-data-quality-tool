@@ -56,11 +56,42 @@ const ROW_STYLE: Record<RowType, { bg: string; border: string }> = {
 }
 
 const DIFF_COLS = '1.5fr 1.1fr 1.1fr 1.5fr'
+const LARGE_PREVIEW_CHARS = 120
+
+function isLargeArr(v: unknown): v is unknown[] {
+  return Array.isArray(v) && JSON.stringify(v).length > LARGE_PREVIEW_CHARS
+}
+
+// Renders a large array truncated by character count — state controlled by parent row.
+function LargeArrayCell({ val, color, expanded, onToggle }: {
+  val: unknown[]; color?: string; expanded: boolean; onToggle: () => void
+}) {
+  const full = JSON.stringify(val)
+  const btnStyle: React.CSSProperties = {
+    color: 'var(--dq-text-5)', textDecoration: 'underline',
+    background: 'none', border: 'none', cursor: 'pointer',
+    fontFamily: 'inherit', fontSize: 'inherit', padding: 0,
+  }
+
+  return (
+    <span style={{ color }}>
+      {expanded ? full : `${full.slice(0, LARGE_PREVIEW_CHARS)}…`}
+      {' '}
+      <button onClick={(e) => { e.stopPropagation(); onToggle() }} style={btnStyle}>
+        {expanded ? 'show less' : 'show more'}
+      </button>
+    </span>
+  )
+}
 
 // ── Diff table ───────────────────────────────────────────────────────────────
 
 function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityType: string; appId: string }) {
   const [rawOpen, setRawOpen] = useState(false)
+  // Per-row expanded state for large arrays (keyed by dbKey)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const toggleRow = (dbKey: string) =>
+    setExpandedRows((prev) => { const s = new Set(prev); s.has(dbKey) ? s.delete(dbKey) : s.add(dbKey); return s })
 
   const mapping = getFieldMapping(appId, entityType)
   const visibleRows = mapping.filter(
@@ -94,7 +125,7 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
       </div>
 
       {/* Rows */}
-      {visibleRows.map(({ apiKey, dbKey, transform, note, constant, dynamic }) => {
+      {visibleRows.map(({ apiKey, dbKey, transform, normalize, note, constant, dynamic }) => {
         const isConst     = constant !== undefined
         const apiPresent  = apiKey !== undefined && apiKey in api
         const rawVal      = apiPresent ? api[apiKey!] : undefined
@@ -102,10 +133,12 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
         const dbPresent   = dbKey in db
         const dbVal       = db[dbKey]
 
-        const compareVal = isConst ? constant : transformed
-        const hasBoth    = (isConst || apiPresent) && dbPresent
-        const match      = hasBoth && JSON.stringify(compareVal) === JSON.stringify(dbVal)
-        const rType      = getRowType(dynamic, dbKey, compareVal, dbVal, hasBoth, match, gpsDist)
+        const compareVal     = isConst ? constant : transformed
+        const normalizedCmp  = normalize ? normalize(compareVal) : compareVal
+        const normalizedDb   = normalize ? normalize(dbVal)      : dbVal
+        const hasBoth        = (isConst || apiPresent) && dbPresent
+        const match          = hasBoth && JSON.stringify(normalizedCmp) === JSON.stringify(normalizedDb)
+        const rType          = getRowType(dynamic, dbKey, normalizedCmp, normalizedDb, hasBoth, match, gpsDist)
         const rs         = ROW_STYLE[rType]
         const ruleText   = note ?? (!transform && !isConst ? 'copy' : '')
 
@@ -127,7 +160,9 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
                 : <>
                     <span style={{ color: '#5a8ab0' }}>&quot;{apiKey}&quot;</span>
                     <span style={{ color: 'var(--dq-text-8)' }}>: </span>
-                    <span>{JSON.stringify(rawVal)}</span>
+                    {isLargeArr(rawVal)
+                      ? <LargeArrayCell val={rawVal} expanded={expandedRows.has(dbKey)} onToggle={() => toggleRow(dbKey)} />
+                      : <span>{JSON.stringify(rawVal)}</span>}
                   </>}
             </div>
 
@@ -138,7 +173,11 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
 
             {/* Transformed */}
             <div style={{ color: 'var(--dq-text-3)' }}>
-              {!isConst && apiPresent ? JSON.stringify(transformed) : ''}
+              {!isConst && apiPresent
+                ? isLargeArr(transformed)
+                  ? <LargeArrayCell val={transformed} expanded={expandedRows.has(dbKey)} onToggle={() => toggleRow(dbKey)} />
+                  : JSON.stringify(transformed)
+                : ''}
             </div>
 
             {/* DB */}
@@ -147,7 +186,9 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
                 ? <>
                     <span style={{ color: '#7a5a9a' }}>&quot;{dbKey}&quot;</span>
                     <span style={{ color: 'var(--dq-text-8)' }}>: </span>
-                    <span>{JSON.stringify(dbVal)}</span>
+                    {isLargeArr(dbVal)
+                      ? <LargeArrayCell val={dbVal} expanded={expandedRows.has(dbKey)} onToggle={() => toggleRow(dbKey)} color={rType === 'mismatch' ? 'var(--dq-red)' : undefined} />
+                      : <span>{JSON.stringify(dbVal)}</span>}
                   </>
                 : <span style={{ color: 'var(--dq-text-7)' }}>—</span>}
             </div>
@@ -207,11 +248,14 @@ const VERDICT_COLOR: Record<string, string> = {
   Different: 'var(--dq-red)',
 }
 
+const PAGE_SIZE = 25
+
 interface Props { comparisons: AiComparison[]; appId: string }
 
 export function AiResultsTab({ comparisons, appId }: Props) {
   const [openId, setOpenId] = useState<string | null>(null)
   const [filter, setFilter] = useState<VerdictFilter>('all')
+  const [page,   setPage]   = useState(0)
 
   if (comparisons.length === 0) {
     return (
@@ -226,7 +270,19 @@ export function AiResultsTab({ comparisons, appId }: Props) {
     return acc
   }, {})
 
-  const visible = filter === 'all' ? comparisons : comparisons.filter((c) => c.verdict === filter)
+  const filtered   = filter === 'all' ? comparisons : comparisons.filter((c) => c.verdict === filter)
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const visible    = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  const goToPage = (p: number) => { setPage(p); setOpenId(null) }
+  const changeFilter = (v: VerdictFilter) => { setFilter(v); setPage(0); setOpenId(null) }
+
+  const navBtnStyle = (disabled: boolean): React.CSSProperties => ({
+    padding: '3px 10px', fontFamily: 'inherit', fontSize: '12px',
+    border: '1px solid var(--dq-border-2)', borderRadius: '6px',
+    background: 'transparent', cursor: disabled ? 'default' : 'pointer',
+    color: disabled ? 'var(--dq-text-8)' : 'var(--dq-text-4)',
+  })
 
   return (
     <div className="flex flex-col gap-[10px]">
@@ -239,7 +295,7 @@ export function AiResultsTab({ comparisons, appId }: Props) {
           return (
             <button
               key={value}
-              onClick={() => { setFilter(value); setOpenId(null) }}
+              onClick={() => changeFilter(value)}
               className="flex items-center gap-[6px] rounded-[6px] px-[10px] py-[5px] text-[12px] transition-colors"
               style={{
                 border:     active ? '1px solid var(--dq-border-strong)' : '1px solid var(--dq-border-2)',
@@ -261,6 +317,16 @@ export function AiResultsTab({ comparisons, appId }: Props) {
             </button>
           )
         })}
+
+        {totalPages > 1 && (
+          <div className="ml-auto flex items-center gap-[6px]">
+            <button disabled={page === 0} onClick={() => goToPage(page - 1)} style={navBtnStyle(page === 0)}>‹</button>
+            <span className="font-mono text-[11px]" style={{ color: 'var(--dq-text-5)' }}>
+              {page + 1} / {totalPages}
+            </span>
+            <button disabled={page === totalPages - 1} onClick={() => goToPage(page + 1)} style={navBtnStyle(page === totalPages - 1)}>›</button>
+          </div>
+        )}
       </div>
 
       {/* List */}
@@ -275,12 +341,14 @@ export function AiResultsTab({ comparisons, appId }: Props) {
           return (
             <div
               key={c.id}
-              className="overflow-hidden rounded-[8px] cursor-pointer select-none"
+              className="overflow-hidden rounded-[8px]"
               style={{ background: 'var(--dq-bg-3)', border: '1px solid var(--dq-border-2)' }}
-              onClick={() => setOpenId(isOpen ? null : c.id)}
             >
-              {/* Header row */}
-              <div className="flex items-center gap-[10px] px-[14px] py-[11px]">
+              {/* Header row — click anywhere here to toggle */}
+              <div
+                className="flex items-center gap-[10px] px-[14px] py-[11px] select-none cursor-pointer"
+                onClick={() => setOpenId(isOpen ? null : c.id)}
+              >
                 <span
                   className="shrink-0 text-[10px] transition-transform"
                   style={{
@@ -313,6 +381,17 @@ export function AiResultsTab({ comparisons, appId }: Props) {
           )
         })}
       </div>
+
+      {/* Bottom pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end gap-[6px]">
+          <button disabled={page === 0} onClick={() => goToPage(page - 1)} style={navBtnStyle(page === 0)}>‹</button>
+          <span className="font-mono text-[11px]" style={{ color: 'var(--dq-text-5)' }}>
+            {page + 1} / {totalPages}
+          </span>
+          <button disabled={page === totalPages - 1} onClick={() => goToPage(page + 1)} style={navBtnStyle(page === totalPages - 1)}>›</button>
+        </div>
+      )}
     </div>
   )
 }

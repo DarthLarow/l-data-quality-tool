@@ -293,15 +293,16 @@ export async function getHumanForestZoneContext(
   // that belongs to the same city as the given polygon.
   // This allows the adapter to work for any future city Human Forest may expand to.
   const rows = await scrapersQuery<HumanForestZoneContextRow>(
-    `SELECT ct.extra_context->>'location_id' AS location_id,
+    `SELECT ct.payload::jsonb->'extra_context'->>'location_id' AS location_id,
             ARRAY(
-              SELECT jsonb_array_elements_text(ct.extra_context->'types')::int
+              SELECT jsonb_array_elements_text(ct.payload::jsonb->'extra_context'->'types')::int
             ) AS types
      FROM collection_tasks ct
      JOIN city_polygons cp ON cp.id = ct.city_polygon_id
-     JOIN apps a ON a.id = ct.app_id
+     JOIN cities c ON c.id = cp.city_id
+     JOIN apps a ON a.id = c.app_id
      WHERE a.name = 'human_forest'
-       AND ct.extra_context->>'location_id' IS NOT NULL
+       AND ct.payload::jsonb->'extra_context'->>'location_id' IS NOT NULL
        AND cp.city_id = (
              SELECT city_id FROM city_polygons WHERE id::text = $1 LIMIT 1
            )

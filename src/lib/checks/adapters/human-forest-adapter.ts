@@ -91,11 +91,14 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
       headers: { ...BASE_HEADERS, 'content-type': 'application/x-www-form-urlencoded' },
       body:    body.toString(),
     })
-    if (res.status === 401) {
-      await this.signIn(account)
-      return
+    if (!res.ok) {
+      // 400/401 = refresh token expired → fall back to full sign-in
+      if (res.status === 400 || res.status === 401) {
+        await this.signIn(account)
+        return
+      }
+      throw new Error(`Human Forest refresh-token failed: HTTP ${res.status}`)
     }
-    if (!res.ok) throw new Error(`Human Forest refresh-token failed: HTTP ${res.status}`)
     const data = (await res.json() as Record<string, unknown>)
     const tokens = data['data'] as Record<string, unknown>
     account.accessToken  = tokens['accessToken']  as string
@@ -191,13 +194,14 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
     }
     const items = ((bundleData['data'] as Record<string, unknown>)['items'] as Array<Record<string, unknown>>) ?? []
     for (const item of items) {
+      const credits = item['credits'] as string | null | undefined
       results.push({
-        id:                   item['id'] as string,
-        pricingPlanName:      item['title'] as string,
-        name:                 'per_minute',
-        amt:                  (item['priceValue'] as number) / (item['creditsValue'] as number),
-        currency:             this.parseCurrency(item['price'] as string),
-        description:          item['description'] ?? null,
+        id:                    item['id'] as string,
+        pricingPlanName:       item['title'] as string,
+        name:                  credits ? credits.toLowerCase().replace(/ /g, '_') : null,
+        amt:                   item['priceValue'] as number,
+        currency:              this.parseCurrency(item['price'] as string),
+        description:           item['description'] ?? null,
         expirationTimeSeconds: (item['metadata'] as Record<string, unknown> | null)?.['expirationTimeSeconds'] ?? null,
       })
     }

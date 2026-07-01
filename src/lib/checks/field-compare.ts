@@ -9,6 +9,19 @@ export interface FieldCompareResult {
   mismatches:  string[]
 }
 
+const LARGE_VAL_LEN = 200
+
+function isLargeVal(v: unknown): boolean {
+  return Array.isArray(v) && JSON.stringify(v).length > LARGE_VAL_LEN
+}
+
+function mismatchMsg(dbKey: string, apiVal: unknown, dbVal: unknown): string {
+  if (isLargeVal(apiVal) || isLargeVal(dbVal)) {
+    return `${dbKey}: values differ (large array)`
+  }
+  return `${dbKey}: expected ${JSON.stringify(apiVal)}, got ${JSON.stringify(dbVal)}`
+}
+
 function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R   = 6_371_000
   const φ1  = (lat1 * Math.PI) / 180
@@ -53,8 +66,9 @@ export function compareEntityFields(
 
     if (!row.apiKey || !(row.apiKey in api)) continue
 
-    const apiVal = row.transform ? row.transform(api[row.apiKey]) : api[row.apiKey]
-    const dbVal  = db[row.dbKey]
+    const apiRaw = row.transform ? row.transform(api[row.apiKey]) : api[row.apiKey]
+    const apiVal = row.normalize ? row.normalize(apiRaw) : apiRaw
+    const dbVal  = row.normalize ? row.normalize(db[row.dbKey]) : db[row.dbKey]
 
     if (row.dynamic) {
       const threshold = row.threshold
@@ -97,7 +111,7 @@ export function compareEntityFields(
       }
     } else {
       if (!deepEqual(apiVal, dbVal)) {
-        mismatches.push(`${row.dbKey}: expected ${JSON.stringify(apiVal)}, got ${JSON.stringify(dbVal)}`)
+        mismatches.push(mismatchMsg(row.dbKey, apiVal, dbVal))
       }
     }
   }
