@@ -73,9 +73,11 @@ function MonoInput({ value, onChange, placeholder, required }: {
         #
       </span>
       <input
-        type="number"
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => { if (/^\d*$/.test(e.target.value)) onChange(e.target.value) }}
         placeholder={placeholder ?? 'e.g. 1234'}
         required={required}
         className="flex-1 bg-transparent px-[10px] py-[8px] font-mono text-[13px] outline-none"
