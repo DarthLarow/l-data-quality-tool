@@ -15,8 +15,26 @@ function isLargeVal(v: unknown): boolean {
   return Array.isArray(v) && JSON.stringify(v).length > LARGE_VAL_LEN
 }
 
+// Count meaningful units in a large array.
+// For rings format [[[lng,lat],...], ...] (depth 3) → total points across all rings.
+// For a flat array → its length.
+function arrPointCount(v: unknown): number | null {
+  if (!Array.isArray(v) || v.length === 0) return null
+  const first = v[0]
+  if (Array.isArray(first) && first.length > 0 && Array.isArray((first as unknown[])[0])) {
+    return (v as unknown[][][]).reduce((s, ring) => s + ring.length, 0)
+  }
+  return v.length
+}
+
 function mismatchMsg(dbKey: string, apiVal: unknown, dbVal: unknown): string {
   if (isLargeVal(apiVal) || isLargeVal(dbVal)) {
+    const aC = arrPointCount(apiVal)
+    const dC = arrPointCount(dbVal)
+    if (aC !== null && dC !== null) {
+      if (aC === dC) return `${dbKey}: same point count (${aC}), different values`
+      return `${dbKey}: API ${aC} pts vs DB ${dC} pts`
+    }
     return `${dbKey}: values differ (large array)`
   }
   return `${dbKey}: expected ${JSON.stringify(apiVal)}, got ${JSON.stringify(dbVal)}`

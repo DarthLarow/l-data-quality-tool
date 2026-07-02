@@ -1,5 +1,6 @@
 import { getHumanForestAccount, getHumanForestZoneContext } from '@/lib/scrapers-db'
 import { uuidv5 } from '@/lib/uuid5'
+import { HF_UNLOCK_DESCRIPTION } from '@/lib/field-mappings'
 import type { ScraperApiAdapter, PolygonBounds } from './scraper-adapter'
 import { ApiUnexpectedResponseError } from './scraper-adapter'
 import type { EntityType, ScraperEntity } from '@/types'
@@ -218,12 +219,6 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
       )
     }
 
-    const UNLOCK_DESCRIPTION =
-      'Pay as you go rides only. ' +
-      'Pay £1 to unlock, then choose a bike with 1,2,5,10 or 30 minutes included. ' +
-      'Minute allocation is based on ebike availability, location and time and is subject to T&Cs. ' +
-      'After the minutes included are used, you\'ll be charged per minute.'
-
     type VehicleType = { vehicleTypeId: number; title: string; unlockFee: string; pricingTime: string; pricingParking: string; pricing: { pricePerMinute: number; pricePerParkingMinute: number; unlockFee: number; currencyCode: string } }
     const rows: Array<[string, string, number]> = [] // [name, rawStr, amt]
     for (const vt of vtData['data'] as VehicleType[]) {
@@ -240,7 +235,7 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
           amt,
           currency,
           vehicleType: vt.title,
-          descriptions: name === 'unlock' ? UNLOCK_DESCRIPTION : null,
+          descriptions: name === 'unlock' ? HF_UNLOCK_DESCRIPTION : null,
         })
       }
       rows.length = 0

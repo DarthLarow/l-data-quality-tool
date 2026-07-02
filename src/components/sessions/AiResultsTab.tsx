@@ -140,7 +140,7 @@ function DiffTable({ api, db, entityType, appId }: { api: Obj; db: Obj; entityTy
         const match          = hasBoth && JSON.stringify(normalizedCmp) === JSON.stringify(normalizedDb)
         const rType          = getRowType(dynamic, dbKey, normalizedCmp, normalizedDb, hasBoth, match, gpsDist)
         const rs         = ROW_STYLE[rType]
-        const ruleText   = note ?? (!transform && !isConst ? 'copy' : '')
+        const ruleText   = note ?? (isConst ? 'constant' : (!transform ? 'copy' : ''))
 
         return (
           <div
