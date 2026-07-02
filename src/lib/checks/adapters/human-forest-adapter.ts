@@ -11,7 +11,7 @@ const LOGIN_URL     = `${BASE_URL}/v2/auth/login`
 const REFRESH_URL   = `${BASE_URL}/v2/auth/refresh-token`
 const VEHICLES_URL  = `${BASE_URL}/v1/vehicles`
 const VEH_TYPES_URL = `${BASE_URL}/v1/vehicles/types`
-const BUNDLES_URL   = `${BASE_URL}/v1/bundles`
+const BUNDLES_URL   = `${BASE_URL}/v1/minutes-view/subscriptions-and-bundles`
 const ZONES_URL     = `${BASE_URL}/v1/territories`
 
 const USER_AGENT =
@@ -184,8 +184,8 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
   private async fetchPricings(polygon: PolygonBounds, account: HumanForestAccount): Promise<ScraperEntity[]> {
     const results: ScraperEntity[] = []
 
-    // Step 1: bundles
-    const bundleData = await this.get(BUNDLES_URL, account) as Record<string, unknown>
+    // Step 1: bundles — endpoint requires version=3 to include Forest Flex subscription
+    const bundleData = await this.get(`${BUNDLES_URL}?version=3`, account) as Record<string, unknown>
     if (bundleData['success'] !== true) {
       throw new ApiUnexpectedResponseError(
         'pricings', polygon.polygonId,
@@ -194,11 +194,13 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
     }
     const items = ((bundleData['data'] as Record<string, unknown>)['items'] as Array<Record<string, unknown>>) ?? []
     for (const item of items) {
-      const credits = item['credits'] as string | null | undefined
+      // creditsPerRide takes priority over credits; commas stripped to match Python parser
+      const nameSource = (item['creditsPerRide'] ?? item['credits']) as string | null | undefined
+      const name = nameSource ? nameSource.toLowerCase().replace(/ /g, '_').replace(/,/g, '') : null
       results.push({
         id:                    item['id'] as string,
         pricingPlanName:       item['title'] as string,
-        name:                  credits ? credits.toLowerCase().replace(/ /g, '_') : null,
+        name,
         amt:                   item['priceValue'] as number,
         currency:              this.parseCurrency(item['price'] as string),
         description:           item['description'] ?? null,
@@ -216,6 +218,12 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
       )
     }
 
+    const UNLOCK_DESCRIPTION =
+      'Pay as you go rides only. ' +
+      'Pay £1 to unlock, then choose a bike with 1,2,5,10 or 30 minutes included. ' +
+      'Minute allocation is based on ebike availability, location and time and is subject to T&Cs. ' +
+      'After the minutes included are used, you\'ll be charged per minute.'
+
     type VehicleType = { vehicleTypeId: number; title: string; unlockFee: string; pricingTime: string; pricingParking: string; pricing: { pricePerMinute: number; pricePerParkingMinute: number; unlockFee: number; currencyCode: string } }
     const rows: Array<[string, string, number]> = [] // [name, rawStr, amt]
     for (const vt of vtData['data'] as VehicleType[]) {
@@ -232,6 +240,7 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
           amt,
           currency,
           vehicleType: vt.title,
+          descriptions: name === 'unlock' ? UNLOCK_DESCRIPTION : null,
         })
       }
       rows.length = 0

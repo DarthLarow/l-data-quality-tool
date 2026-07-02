@@ -118,3 +118,40 @@ describe('compareEntityFields — no mapping', () => {
     expect(r.explanation).toMatch(/No field mapping/)
   })
 })
+
+describe('compareEntityFields — human_forest / pricings', () => {
+  it('Same — bundle with creditsPerRide as name source', () => {
+    const api = {
+      id: 'bundle-1', name: 'day_pass', currency: 'GBP', amt: 9.99,
+      pricingPlanName: '24hr unlimited rides', description: 'Unlimited rides',
+    }
+    const db = {
+      pricing_plan_id: 'bundle-1', name: 'day_pass', currency: 'GBP', amt: 9.99,
+      pricing_plan_name: '24hr unlimited rides', descriptions: 'Unlimited rides',
+    }
+    const r = compareEntityFields(api, db, 'pricings', 'human_forest')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Same — vehicle type unlock with descriptions', () => {
+    const UNLOCK_DESC = "Pay as you go rides only. Pay £1 to unlock, then choose a bike with 1,2,5,10 or 30 minutes included. Minute allocation is based on ebike availability, location and time and is subject to T&Cs. After the minutes included are used, you'll be charged per minute."
+    const api = {
+      id: 'uuid-unlock', name: 'unlock', currency: 'GBP', amt: 1.0,
+      vehicleType: 'E-bike', descriptions: UNLOCK_DESC,
+    }
+    const db = {
+      pricing_plan_id: 'uuid-unlock', name: 'unlock', currency: 'GBP', amt: 1.0,
+      vehicle_type: 'E-bike', descriptions: UNLOCK_DESC,
+    }
+    const r = compareEntityFields(api, db, 'pricings', 'human_forest')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Different — bundle name mismatch (comma not stripped)', () => {
+    const api = { id: 'b1', name: 'day_pass', currency: 'GBP', amt: 9.99 }
+    const db  = { pricing_plan_id: 'b1', name: 'day,pass', currency: 'GBP', amt: 9.99 }
+    const r = compareEntityFields(api, db, 'pricings', 'human_forest')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('name'))).toBe(true)
+  })
+})

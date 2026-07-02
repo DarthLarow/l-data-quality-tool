@@ -77,6 +77,7 @@ const isBasePricing = (api: ApiSnapshot) => !isRidePass(api)
 // Human Forest pricings sub-type predicates
 const isHfBundle      = (api: ApiSnapshot) => !('vehicleType' in api)
 const isHfVehicleType = (api: ApiSnapshot) =>   'vehicleType' in api
+const isHfUnlock      = (api: ApiSnapshot) =>   'vehicleType' in api && api['name'] === 'unlock'
 
 // Per-scraper field mapping registry.
 // Key: scrapers_db.apps.name (= quality_db.Scraper.appId).
@@ -156,16 +157,17 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
       { apiKey: 'lon',      dbKey: 'location_lng', dynamic: true                                                                         },
     ],
 
-    // GET /v1/bundles → pricings (bundles sub-type)
+    // GET /v1/minutes-view/subscriptions-and-bundles?version=3 → pricings (bundles sub-type)
     // GET /v1/vehicles/types → pricings (vehicle-type sub-type: unlock/per_minute/parking)
     pricings: [
-      { apiKey: 'id',              dbKey: 'pricing_plan_id'                                 },
-      { apiKey: 'name',            dbKey: 'name'                                            },
-      { apiKey: 'currency',        dbKey: 'currency'                                        },
-      { apiKey: 'amt',             dbKey: 'amt'                                             },
-      { apiKey: 'pricingPlanName', dbKey: 'pricing_plan_name', onlyWhen: isHfBundle        },
-      { apiKey: 'description',     dbKey: 'descriptions',      onlyWhen: isHfBundle        },
-      { apiKey: 'vehicleType',     dbKey: 'vehicle_type',      onlyWhen: isHfVehicleType   },
+      { apiKey: 'id',           dbKey: 'pricing_plan_id'                                  },
+      { apiKey: 'name',         dbKey: 'name'                                             },
+      { apiKey: 'currency',     dbKey: 'currency'                                         },
+      { apiKey: 'amt',          dbKey: 'amt'                                              },
+      { apiKey: 'pricingPlanName', dbKey: 'pricing_plan_name', onlyWhen: isHfBundle      },
+      { apiKey: 'description',  dbKey: 'descriptions',         onlyWhen: isHfBundle      },
+      { apiKey: 'vehicleType',  dbKey: 'vehicle_type',         onlyWhen: isHfVehicleType },
+      { apiKey: 'descriptions', dbKey: 'descriptions',         onlyWhen: isHfUnlock      },
     ],
 
     // GET /v1/territories → zones
