@@ -76,6 +76,7 @@ export async function findEntitiesByIds(
   entityType: EntityType,
   appId?: string,
   sessionId?: number,
+  cityPolygonId?: string,
 ): Promise<Map<string, Record<string, unknown>>> {
   if (entityIds.length === 0) return new Map()
   const { table, idCol } = ENTITY_TABLE_MAP[entityType]
@@ -86,13 +87,29 @@ export async function findEntitiesByIds(
   if (sessionId !== undefined && appId !== undefined) {
     // Filter to a specific scraper session so the snapshot reflects the correct collection run.
     // DISTINCT ON picks one row per entity when multiple collection tasks in the same session collected it.
-    sql = `SELECT DISTINCT ON (e.${idCol}) e.*
-           FROM ${table} e
-           JOIN collection_tasks ct ON ct.id = e.collection_task_id
-           WHERE e.${idCol} = ANY($1::text[])
-             AND e.provider = $2
-             AND ct.session_id = $3`
-    params = [entityIds, appId, sessionId]
+    // cityPolygonId narrows to the same city, preventing non-unique IDs (e.g. 'scooter_ride')
+    // from matching rows collected for a different city within the same session.
+    if (cityPolygonId !== undefined) {
+      sql = `SELECT DISTINCT ON (e.${idCol}) e.*
+             FROM ${table} e
+             JOIN collection_tasks ct ON ct.id = e.collection_task_id
+             WHERE e.${idCol} = ANY($1::text[])
+               AND e.provider = $2
+               AND ct.session_id = $3
+               AND ct.city_polygon_id IN (
+                 SELECT id FROM city_polygons
+                 WHERE city_id = (SELECT city_id FROM city_polygons WHERE id = $4::int)
+               )`
+      params = [entityIds, appId, sessionId, cityPolygonId]
+    } else {
+      sql = `SELECT DISTINCT ON (e.${idCol}) e.*
+             FROM ${table} e
+             JOIN collection_tasks ct ON ct.id = e.collection_task_id
+             WHERE e.${idCol} = ANY($1::text[])
+               AND e.provider = $2
+               AND ct.session_id = $3`
+      params = [entityIds, appId, sessionId]
+    }
   } else if (appId !== undefined) {
     sql = `SELECT * FROM ${table} WHERE ${idCol} = ANY($1::text[]) AND provider = $2`
     params = [entityIds, appId]
@@ -277,6 +294,59 @@ export async function getHumanForestAccount(): Promise<HumanForestAccountRow | n
      WHERE ap.name = 'human_forest'
        AND a.is_active = true
      LIMIT 1`,
+  )
+  return rows[0] ?? null
+}
+
+export interface BoltAccountRow {
+  access_token:  string | null
+  refresh_token: string
+  device_id:     string
+  user_id:       string
+  session_id:    string
+  distinct_id:   string
+  rh_session_id: string
+  cookie:        string
+}
+
+export async function getBoltAccount(): Promise<BoltAccountRow | null> {
+  const rows = await scrapersQuery<BoltAccountRow>(
+    `SELECT a.access_token,
+            a.refresh_token,
+            a.extra_context->>'device_id'     AS device_id,
+            a.extra_context->>'user_id'       AS user_id,
+            a.extra_context->>'session_id'    AS session_id,
+            a.extra_context->>'distinct_id'   AS distinct_id,
+            a.extra_context->>'rh_session_id' AS rh_session_id,
+            a.extra_context->>'cookie'        AS cookie
+     FROM accounts a
+     JOIN apps ap ON ap.id = a.app_id
+     WHERE ap.name = 'bolt'
+       AND a.is_active = true
+     LIMIT 1`,
+  )
+  return rows[0] ?? null
+}
+
+export interface BoltCityContextRow {
+  country: string  // ISO code e.g. "es"
+  tile_id: string  // e.g. "24,460"
+}
+
+export async function getBoltCityContext(
+  polygonId: string,
+): Promise<BoltCityContextRow | null> {
+  const rows = await scrapersQuery<BoltCityContextRow>(
+    `SELECT cc.extra_context->>'country' AS country,
+            cc.extra_context->>'tile_id'  AS tile_id
+     FROM city_polygons cp
+     JOIN cities c        ON c.id  = cp.city_id
+     JOIN city_configs cc ON cc.city_id = c.id
+     JOIN apps a          ON a.id  = c.app_id
+     WHERE a.name = 'bolt'
+       AND cp.id::text = $1
+     LIMIT 1`,
+    [polygonId],
   )
   return rows[0] ?? null
 }

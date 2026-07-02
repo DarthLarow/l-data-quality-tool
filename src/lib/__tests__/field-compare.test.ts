@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { compareEntityFields } from '../checks/field-compare'
+import { HF_UNLOCK_DESCRIPTION } from '../field-mappings'
 
 const BASE_API = {
   carId:        42,
@@ -133,15 +134,14 @@ describe('compareEntityFields — human_forest / pricings', () => {
     expect(r.verdict).toBe('Same')
   })
 
-  it('Same — vehicle type unlock with descriptions', () => {
-    const UNLOCK_DESC = "Pay as you go rides only. Pay £1 to unlock, then choose a bike with 1,2,5,10 or 30 minutes included. Minute allocation is based on ebike availability, location and time and is subject to T&Cs. After the minutes included are used, you'll be charged per minute."
+  it('Same — vehicle type unlock with descriptions (constant from mapping)', () => {
     const api = {
       id: 'uuid-unlock', name: 'unlock', currency: 'GBP', amt: 1.0,
-      vehicleType: 'E-bike', descriptions: UNLOCK_DESC,
+      vehicleType: 'E-bike',
     }
     const db = {
       pricing_plan_id: 'uuid-unlock', name: 'unlock', currency: 'GBP', amt: 1.0,
-      vehicle_type: 'E-bike', descriptions: UNLOCK_DESC,
+      vehicle_type: 'E-bike', descriptions: HF_UNLOCK_DESCRIPTION,
     }
     const r = compareEntityFields(api, db, 'pricings', 'human_forest')
     expect(r.verdict).toBe('Same')
@@ -153,5 +153,219 @@ describe('compareEntityFields — human_forest / pricings', () => {
     const r = compareEntityFields(api, db, 'pricings', 'human_forest')
     expect(r.verdict).toBe('Different')
     expect(r.mismatches.some((m) => m.includes('name'))).toBe(true)
+  })
+})
+
+// ─── Bolt ─────────────────────────────────────────────────────────────────────
+
+const BOLT_DOCKLESS_API = {
+  vehicle_id:   '515616',
+  zone_id:      '114',
+  category:     'scooter',
+  battery:      32,
+  location_lat: 44.4078,
+  location_lng: 26.0598,
+}
+const BOLT_DOCKLESS_DB = {
+  vehicle_id:   '515616',
+  zone_id:      '114',
+  category:     'scooter',
+  battery:      32,
+  location_lat: 44.4078,
+  location_lng: 26.0598,
+}
+
+describe('compareEntityFields — bolt / dockless', () => {
+  it('Same — all fields match', () => {
+    const r = compareEntityFields(BOLT_DOCKLESS_API, BOLT_DOCKLESS_DB, 'dockless', 'bolt')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — vehicle_id mismatch', () => {
+    const r = compareEntityFields(
+      { ...BOLT_DOCKLESS_API, vehicle_id: '999' },
+      BOLT_DOCKLESS_DB,
+      'dockless', 'bolt',
+    )
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('vehicle_id'))).toBe(true)
+  })
+
+  it('Different — category mismatch (base type differs)', () => {
+    const r = compareEntityFields(
+      { ...BOLT_DOCKLESS_API, category: 'ebike' },
+      BOLT_DOCKLESS_DB,
+      'dockless', 'bolt',
+    )
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('category'))).toBe(true)
+  })
+
+  it('Same — battery ignored (dynamic, no threshold)', () => {
+    const r = compareEntityFields(
+      { ...BOLT_DOCKLESS_API, battery: 5 },
+      { ...BOLT_DOCKLESS_DB,  battery: 95 },
+      'dockless', 'bolt',
+    )
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Same — GPS within 10km threshold', () => {
+    const r = compareEntityFields(
+      { ...BOLT_DOCKLESS_API, location_lat: 44.4078, location_lng: 26.0598 },
+      { ...BOLT_DOCKLESS_DB,  location_lat: 44.4100, location_lng: 26.0598 },
+      'dockless', 'bolt',
+    )
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Different — GPS exceeds 10km threshold', () => {
+    const r = compareEntityFields(
+      { ...BOLT_DOCKLESS_API, location_lat: 44.4078, location_lng: 26.0598 },
+      { ...BOLT_DOCKLESS_DB,  location_lat: 44.5100, location_lng: 26.0598 },
+      'dockless', 'bolt',
+    )
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('location'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — bolt / zones', () => {
+  const COORDS = [[47.37795, 8.54102], [47.3782, 8.54112], [47.37795, 8.54102]]
+
+  it('Same — all fields match (geometry depth-2 both sides)', () => {
+    const api = {
+      zone_id: '3210717', area_type: 'restricted_speed_limited',
+      area_priority: 42, area_zone_id: '96', vehicle_type: 'ebike,scooter',
+      geometry_type: 'Polygon', geometry_coordinates: COORDS,
+    }
+    const db = {
+      zone_id: '3210717', area_type: 'restricted_speed_limited',
+      area_priority: 42, area_zone_id: '96', vehicle_type: 'ebike,scooter',
+      geometry_type: 'Polygon', geometry_coordinates: COORDS,
+    }
+    const r = compareEntityFields(api, db, 'zones', 'bolt')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Different — vehicle_type mismatch', () => {
+    const api = { zone_id: 'z1', area_type: 'no_parking', area_priority: 10, area_zone_id: '5', vehicle_type: 'scooter', geometry_coordinates: COORDS }
+    const db  = { zone_id: 'z1', area_type: 'no_parking', area_priority: 10, area_zone_id: '5', vehicle_type: 'ebike',   geometry_coordinates: COORDS }
+    const r = compareEntityFields(api, db, 'zones', 'bolt')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('vehicle_type'))).toBe(true)
+  })
+
+  it('Same — normalizeGeoCoords treats depth-2 and depth-3 wrapping as equal', () => {
+    const flat   = [[47.37795, 8.54102], [47.3782, 8.54112]]           // depth 2
+    const nested = [[[47.37795, 8.54102], [47.3782, 8.54112]]]         // depth 3
+    const api = { zone_id: 'z1', geometry_coordinates: flat }
+    const db  = { zone_id: 'z1', geometry_type: 'Polygon', geometry_coordinates: nested }
+    const r = compareEntityFields(api, db, 'zones', 'bolt')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Different — geometry_coordinates point count differs', () => {
+    const api = { zone_id: 'z1', geometry_coordinates: [[47.37795, 8.54102], [47.3782, 8.54112]] }
+    const db  = { zone_id: 'z1', geometry_type: 'Polygon', geometry_coordinates: [[47.37795, 8.54102]] }
+    const r = compareEntityFields(api, db, 'zones', 'bolt')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('geometry_coordinates'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — bolt / pricings (subscription)', () => {
+  const API_SUB = {
+    pricing_plan_id:   '3648',
+    name:              'ride_pass',
+    pricing_plan_name: '25 minutes',
+    amt:               3.9,
+    currency:          'EUR',
+    vehicle_type:      'scooter,ebike',
+    discount_id:       '3648',
+    discounted_amount: null,
+    discounted_reason: 'Save 63%',
+    descriptions:      'Valid 24 hours',
+  }
+  const DB_SUB = {
+    pricing_plan_id:   '3648',
+    name:              'ride_pass',
+    pricing_plan_name: '25 minutes',
+    amt:               3.9,
+    currency:          'EUR',
+    vehicle_type:      'scooter,ebike',
+    discount_id:       '3648',
+    discounted_amount: null,
+    discounted_reason: 'Save 63%',
+    descriptions:      'Valid 24 hours',
+  }
+
+  it('Same — subscription, all fields match', () => {
+    const r = compareEntityFields(API_SUB, DB_SUB, 'pricings', 'bolt')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — amt mismatch', () => {
+    const r = compareEntityFields({ ...API_SUB, amt: 4.5 }, DB_SUB, 'pricings', 'bolt')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('amt'))).toBe(true)
+  })
+
+  it('Different — name constant "ride_pass" violated in DB', () => {
+    const r = compareEntityFields(API_SUB, { ...DB_SUB, name: 'other' }, 'pricings', 'bolt')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('name'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — bolt / pricings (vehicle card)', () => {
+  const API_CARD = {
+    pricing_plan_id:   'ebike_unlock',
+    name:              'unlock',
+    pricing_plan_name: 'Unlock',
+    amt:               0.35,
+    currency:          'EUR',
+    vehicle_type:      'ebike',
+    descriptions:      '€0.35',
+  }
+  const DB_CARD = {
+    pricing_plan_id:   'ebike_unlock',
+    name:              'unlock',
+    pricing_plan_name: 'Unlock',
+    amt:               0.35,
+    currency:          'EUR',
+    vehicle_type:      'ebike',
+    descriptions:      '€0.35',
+  }
+
+  it('Same — vehicle card, all fields match', () => {
+    const r = compareEntityFields(API_CARD, DB_CARD, 'pricings', 'bolt')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — amt mismatch', () => {
+    const r = compareEntityFields({ ...API_CARD, amt: 0.5 }, DB_CARD, 'pricings', 'bolt')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('amt'))).toBe(true)
+  })
+
+  it('onlyWhen — subscription fields not evaluated for vehicle card entity', () => {
+    // discount_id is subscription-only; vehicle card never has it → should not flag as mismatch
+    const r = compareEntityFields(API_CARD, { ...DB_CARD, discount_id: 'some-id' }, 'pricings', 'bolt')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('onlyWhen — vehicle card fields not evaluated for subscription entity', () => {
+    // "name" for subscription is a constant "ride_pass" row; the apiKey "name" vehicle card row is skipped
+    const subApi = { ...API_CARD, name: 'ride_pass', pricing_plan_id: '999', discount_id: '999' }
+    const subDb  = { ...DB_CARD,  name: 'ride_pass', pricing_plan_id: '999', discount_id: '999', pricing_plan_name: 'different' }
+    // isBoltVehicleCard rows use apiKey "name" directly; subscription uses constant 'ride_pass'
+    const r = compareEntityFields(subApi, subDb, 'pricings', 'bolt')
+    // pricing_plan_name differs → Different (subscription row for it is active)
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('pricing_plan_name'))).toBe(true)
   })
 })

@@ -79,6 +79,16 @@ const isHfBundle      = (api: ApiSnapshot) => !('vehicleType' in api)
 const isHfVehicleType = (api: ApiSnapshot) =>   'vehicleType' in api
 const isHfUnlock      = (api: ApiSnapshot) =>   'vehicleType' in api && api['name'] === 'unlock'
 
+// Bolt pricings sub-type predicates
+const isBoltSubscription = (api: ApiSnapshot) => api['name'] === 'ride_pass'
+const isBoltVehicleCard  = (api: ApiSnapshot) => api['name'] !== 'ride_pass'
+
+export const HF_UNLOCK_DESCRIPTION =
+  'Pay as you go rides only. ' +
+  'Pay £1 to unlock, then choose a bike with 1,2,5,10 or 30 minutes included. ' +
+  'Minute allocation is based on ebike availability, location and time and is subject to T&Cs. ' +
+  "After the minutes included are used, you'll be charged per minute."
+
 // Per-scraper field mapping registry.
 // Key: scrapers_db.apps.name (= quality_db.Scraper.appId).
 // Used by both the AI comparison builder and the DiffTable UI.
@@ -167,7 +177,7 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
       { apiKey: 'pricingPlanName', dbKey: 'pricing_plan_name', onlyWhen: isHfBundle      },
       { apiKey: 'description',  dbKey: 'descriptions',         onlyWhen: isHfBundle      },
       { apiKey: 'vehicleType',  dbKey: 'vehicle_type',         onlyWhen: isHfVehicleType },
-      { apiKey: 'descriptions', dbKey: 'descriptions',         onlyWhen: isHfUnlock      },
+      { constant: HF_UNLOCK_DESCRIPTION, dbKey: 'descriptions', onlyWhen: isHfUnlock      },
     ],
 
     // GET /v1/territories → zones
@@ -182,6 +192,59 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
       { apiKey: 'areaZoneId',          dbKey: 'area_zone_id'          },
       { apiKey: 'areaRules',           dbKey: 'area_rules',           normalize: parseJsonStr },
       { apiKey: 'geometryCoordinates', dbKey: 'geometry_coordinates', normalize: normalizeGeoCoords },
+    ],
+
+    docked: [],
+  },
+
+  bolt: {
+    // POST /micromobility/search/getVehicles/v2 → dockless_fleets
+    // category is already rsplit("_", 1)[0] in adapter (e.g. "scooter_43" → "scooter").
+    // zone_id stores the API category id (not a geographic zone).
+    dockless: [
+      { apiKey: 'vehicle_id',   dbKey: 'vehicle_id'                                                                                                      },
+      { apiKey: 'zone_id',      dbKey: 'zone_id'                                                                                                          },
+      { apiKey: 'category',     dbKey: 'category'                                                                                                         },
+      { apiKey: 'battery',      dbKey: 'battery',      dynamic: true                                                                                      },
+      { apiKey: 'location_lat', dbKey: 'location_lat', dynamic: true, threshold: { type: 'distance_m', maxMeters: 10000 }, latPair: 'location_lng'        },
+      { apiKey: 'location_lng', dbKey: 'location_lng', dynamic: true                                                                                      },
+    ],
+
+    // GET /micromobility/cityArea/listByTile → zones
+    // geometry_coordinates is [[lat, lng], ...] (depth 2) in both API and DB —
+    // normalizeGeoCoords wraps both sides to depth 3 for comparison.
+    zones: [
+      { apiKey: 'zone_id',              dbKey: 'zone_id'                                                              },
+      { apiKey: 'area_type',            dbKey: 'area_type'                                                            },
+      { apiKey: 'area_priority',        dbKey: 'area_priority'                                                        },
+      { apiKey: 'area_zone_id',         dbKey: 'area_zone_id'                                                         },
+      { apiKey: 'vehicle_type',         dbKey: 'vehicle_type'                                                         },
+      { constant: 'Polygon',            dbKey: 'geometry_type'                                                        },
+      { apiKey: 'geometry_coordinates', dbKey: 'geometry_coordinates', normalize: normalizeGeoCoords                  },
+    ],
+
+    // POST /micromobility/subscription/list → pricings (ride_pass sub-type)
+    // POST /micromobility/vehicle/getCard   → pricings (PAYG sub-type)
+    pricings: [
+      // Subscription (ride_pass) ──────────────────────────────────────────────
+      { apiKey: 'pricing_plan_id',   dbKey: 'pricing_plan_id',   onlyWhen: isBoltSubscription },
+      { constant: 'ride_pass',       dbKey: 'name',              onlyWhen: isBoltSubscription },
+      { apiKey: 'pricing_plan_name', dbKey: 'pricing_plan_name', onlyWhen: isBoltSubscription },
+      { apiKey: 'amt',               dbKey: 'amt',               onlyWhen: isBoltSubscription },
+      { apiKey: 'currency',          dbKey: 'currency',          onlyWhen: isBoltSubscription },
+      { apiKey: 'vehicle_type',      dbKey: 'vehicle_type',      onlyWhen: isBoltSubscription },
+      { apiKey: 'discount_id',       dbKey: 'discount_id',       onlyWhen: isBoltSubscription },
+      { apiKey: 'discounted_amount', dbKey: 'discounted_amount', onlyWhen: isBoltSubscription },
+      { apiKey: 'discounted_reason', dbKey: 'discounted_reason', onlyWhen: isBoltSubscription },
+      { apiKey: 'descriptions',      dbKey: 'descriptions',      onlyWhen: isBoltSubscription },
+      // Vehicle card / PAYG ────────────────────────────────────────────────────
+      { apiKey: 'pricing_plan_id',   dbKey: 'pricing_plan_id',   onlyWhen: isBoltVehicleCard  },
+      { apiKey: 'name',              dbKey: 'name',              onlyWhen: isBoltVehicleCard  },
+      { apiKey: 'pricing_plan_name', dbKey: 'pricing_plan_name', onlyWhen: isBoltVehicleCard  },
+      { apiKey: 'amt',               dbKey: 'amt',               onlyWhen: isBoltVehicleCard  },
+      { apiKey: 'currency',          dbKey: 'currency',          onlyWhen: isBoltVehicleCard  },
+      { apiKey: 'vehicle_type',      dbKey: 'vehicle_type',      onlyWhen: isBoltVehicleCard  },
+      { apiKey: 'descriptions',      dbKey: 'descriptions',      onlyWhen: isBoltVehicleCard  },
     ],
 
     docked: [],

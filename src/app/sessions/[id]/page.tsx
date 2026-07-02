@@ -128,6 +128,29 @@ export default async function SessionPage({
             {' · '}
             created {relTime(session.createdAt)}
           </div>
+
+          {/* Enabled checks */}
+          <div className="mt-[8px] flex items-center gap-[5px]">
+            {([
+              { key: 'api_db', label: 'API→DB'      },
+              { key: 'ai',     label: 'Field Check'  },
+              { key: 'delta',  label: 'Delta'        },
+            ] as const).map(({ key, label }) => {
+              const active = session.checksEnabled.includes(key)
+              return (
+                <span
+                  key={key}
+                  className="rounded-[4px] px-[6px] py-[2px] font-mono text-[10px] font-medium"
+                  style={{
+                    color:      active ? 'var(--dq-text-3)'   : 'var(--dq-text-8)',
+                    background: active ? 'var(--dq-border-2)' : 'var(--dq-bg-3)',
+                    border:     `1px solid ${active ? 'var(--dq-border-3)' : 'var(--dq-border-1)'}`,
+                  }}>
+                  {label}
+                </span>
+              )
+            })}
+          </div>
         </div>
 
         {/* Re-run button */}

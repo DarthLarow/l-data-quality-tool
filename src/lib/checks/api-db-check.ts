@@ -1,4 +1,5 @@
-import { findEntitiesByIds, resolvePolygons } from '@/lib/scrapers-db'
+import { findEntitiesByIds } from '@/lib/scrapers-db'
+import type { PolygonBounds } from '@/lib/scrapers-db'
 import type { ScraperApiAdapter } from './adapters/scraper-adapter'
 import { ApiUnexpectedResponseError } from './adapters/scraper-adapter'
 import type { CheckSessionInput, EntityType, ApiDbCheckResult, PolygonCheckResult, ScraperEntity } from '@/types'
@@ -9,12 +10,12 @@ export async function runApiDbCheck(
   input: CheckSessionInput,
   adapter: ScraperApiAdapter,
   entityType: EntityType,
+  allPolygons: PolygonBounds[],
 ): Promise<ApiDbCheckResult> {
   const polygonResults: PolygonCheckResult[] = []
   const allApiIds = new Set<string>()
   const apiEntityMap = new Map<string, Record<string, unknown>>()
 
-  const allPolygons = await resolvePolygons(input.appId, input.polygonIds)
   const strategy = adapter.polygonStrategy?.(entityType) ?? 'all'
   const centerPolygons = allPolygons.filter(
     (p) => p.polygonType?.['is_center'] === 'true' || p.polygonType?.['is_center'] === true,
@@ -75,7 +76,8 @@ export async function runApiDbCheck(
       apiEntityMap.set(entity.id, entity as Record<string, unknown>)
     }
 
-    const foundMap = await findEntitiesByIds(apiEntityIds, entityType, input.appId, input.scrapersSessionId)
+    const cityPolygonId = entityType === 'pricings' ? bounds.polygonId : undefined
+    const foundMap = await findEntitiesByIds(apiEntityIds, entityType, input.appId, input.scrapersSessionId, cityPolygonId)
     const foundInDb    = apiEntityIds.filter((id) => foundMap.has(id))
     const notFoundInDb = apiEntityIds.filter((id) => !foundMap.has(id))
 

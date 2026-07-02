@@ -2,7 +2,7 @@ import { prisma } from '@/lib/quality-db'
 import { runApiDbCheck } from './api-db-check'
 import { runDeltaCheck } from './delta-check'
 import { compareEntityFields } from './field-compare'
-import { findEntitiesByIds, findPreviousScrapersSession, pingScrapersDb } from '@/lib/scrapers-db'
+import { findEntitiesByIds, findPreviousScrapersSession, pingScrapersDb, resolvePolygons } from '@/lib/scrapers-db'
 import { getAdapterRegistry } from './adapters/scraper-adapter'
 import type { CheckSessionInput, EntityType } from '@/types'
 
@@ -38,11 +38,16 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
         ? (await findPreviousScrapersSession(input.scrapersSessionId)) ?? undefined
         : undefined)
 
+    // Resolve polygons once so __random__ always picks the same polygon for all entity types
+    const resolvedPolygons = (checks.has('api_db') || checks.has('ai'))
+      ? await resolvePolygons(input.appId, input.polygonIds)
+      : []
+
     for (const entityType of input.entityTypes as EntityType[]) {
       if (checks.has('api_db') || checks.has('ai')) {
         if (!adapter) throw new Error(`No adapter registered for appId: ${input.appId}`)
 
-        const result = await runApiDbCheck(input, adapter, entityType)
+        const result = await runApiDbCheck(input, adapter, entityType, resolvedPolygons)
 
         if (checks.has('api_db')) {
           await prisma.entityCheckSummary.create({
@@ -73,8 +78,9 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
 
         // Field comparison — all matched entities, no sampling limit
         if (checks.has('ai')) {
-          const allFoundIds = [...new Set(result.polygonResults.flatMap((p) => p.foundInDb))]
-          const dbMap       = await findEntitiesByIds(allFoundIds, entityType, input.appId, input.scrapersSessionId)
+          const allFoundIds   = [...new Set(result.polygonResults.flatMap((p) => p.foundInDb))]
+          const cityPolygonId = entityType === 'pricings' ? result.polygonResults[0]?.polygonId : undefined
+          const dbMap         = await findEntitiesByIds(allFoundIds, entityType, input.appId, input.scrapersSessionId, cityPolygonId)
 
           for (const entityId of allFoundIds) {
             const dbSnapshot  = dbMap.get(entityId)
