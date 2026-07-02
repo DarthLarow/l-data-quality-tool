@@ -249,19 +249,27 @@ Non-bullet lines (no `•`) set the current `vehicle_type`. Bullet lines are pri
 | `descriptions`     | full text of bullet (raw) |
 | `station_id`       | short id = `full_station_id.rsplit("_", 1)[-1]` |
 
-**Scale concern:** A city may have many stations. To keep checks fast, limit pricing requests to the first N stations (e.g. 5) per polygon. Open question: confirm a sensible cap with the team.
+**Scale confirmed:** NYC returns 2458 stations, Chicago 2015, DC 848. Cap pricing requests to the **first 5 stations** per polygon to avoid hundreds of sequential HTTP calls.
 
 ---
 
-## Open questions (need DB access to verify)
+## Confirmed facts from scrapers_db (staging, session 250)
 
-| # | Question | Where to check |
-|---|----------|---------------|
-| 1 | What does `polygon_type` look like for Lyft polygons? Should have `{center_lat, center_lng, radius_m}`. | `SELECT polygon_type FROM city_polygons cp JOIN cities c ON c.id=cp.city_id WHERE c.app_id=(SELECT id FROM apps WHERE name='lyft') LIMIT 3` |
-| 2 | Does `city_configs.extra_context` contain `city_lat`, `city_lon`, `city_code`? | `SELECT cc.extra_context FROM city_configs cc JOIN cities c ON c.id=cc.city_id WHERE c.app_id=... LIMIT 3` |
-| 3 | How many stations per city (inventory response)? Determines if a cap is needed. | Check docked_fleets count per session |
-| 4 | Is there real Lyft data in scrapers_db? | `SELECT COUNT(*) FROM docked_fleets df JOIN collection_tasks ct ON ct.id=df.collection_task_id JOIN city_polygons cp ON cp.id=ct.city_polygon_id JOIN cities c ON c.id=cp.city_id WHERE c.app_id=...` |
-| 5 | Are `is_installed`, `is_renting`, `is_returning` stored as int (0/1) or boolean in DB? | `SELECT is_installed, pg_typeof(is_installed) FROM docked_fleets LIMIT 1` |
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | `polygon_type` structure | `{"type":"circle","radius_m":1414.213...,"center_lat":40.504...,"center_lng":-74.247...}` ✓ |
+| 2 | `city_configs.extra_context` fields | `{"city_lat":40.7128,"city_lon":-74.006,"city_code":"NYC"}` ✓ — all three present |
+| 3 | Stations per city | NYC: 2458, CHI: 2015, DCA: 848, SF: 634, PDX: 287 → **cap to 5** |
+| 4 | Real data in scrapers_db | Yes — session 250: 2449 dockless, 6242 docked ✓ |
+| 5 | `is_installed` column type | `integer` (0/1) ✓ |
+
+**Additional observations:**
+- `station_name` in DB equals `station_id` (the parser sets `station_name = short_id`)
+- `station_id` format depends on compound ID: `"motivate_CHI_<uuid>"` → `"<uuid>"`; `"lyft_<numeric>"` → `"<numeric>"`
+- Dockless `vehicle_id` is a numeric string (e.g. `"1753470622359260384"`), `category` is `"electric_bike"` etc.
+- Pricing `station_id` in DB also = short part, can be numeric (e.g. `"1835247352748090208"`) or UUID
+- `num_docks_available` can be 0 even when bikes_available > 0 (some stations don't report docks separately)
+- Account: `access_token` is `null` on staging → refresh will fire on first request ✓
 
 ---
 
