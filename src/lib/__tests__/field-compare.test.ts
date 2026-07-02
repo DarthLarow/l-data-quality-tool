@@ -320,6 +320,230 @@ describe('compareEntityFields — bolt / pricings (subscription)', () => {
   })
 })
 
+// ─── Voi ──────────────────────────────────────────────────────────────────────
+
+describe('compareEntityFields — voi / dockless', () => {
+  const API = {
+    id:            '9771ec41-b2ec-45c1-8c8a-ab24a6dc3f4e',
+    name:          '5rr9',
+    category:      'ebike',
+    zone_id:       '327',
+    helmet_status: null,
+    battery:       95,
+    location_lat:  51.557748,
+    location_lng:  -0.352991,
+  }
+  const DB = {
+    vehicle_id:   '9771ec41-b2ec-45c1-8c8a-ab24a6dc3f4e',
+    name:         '5rr9',
+    category:     'ebike',
+    zone_id:      '327',
+    helmet_status: null,
+    battery:      95,
+    location_lat: 51.557748,
+    location_lng: -0.352991,
+  }
+
+  it('Same — all fields match', () => {
+    const r = compareEntityFields(API, DB, 'dockless', 'voi')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — vehicle_id mismatch', () => {
+    const r = compareEntityFields({ ...API, id: 'other-uuid' }, DB, 'dockless', 'voi')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('vehicle_id'))).toBe(true)
+  })
+
+  it('Same — battery ignored (dynamic, no threshold)', () => {
+    const r = compareEntityFields({ ...API, battery: 10 }, { ...DB, battery: 90 }, 'dockless', 'voi')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Same — GPS within 10km threshold', () => {
+    const r = compareEntityFields(
+      { ...API, location_lat: 51.557748, location_lng: -0.352991 },
+      { ...DB,  location_lat: 51.558000, location_lng: -0.352991 },
+      'dockless', 'voi',
+    )
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Different — GPS exceeds 10km threshold (~12km)', () => {
+    const r = compareEntityFields(
+      { ...API, location_lat: 51.557748, location_lng: -0.352991 },
+      { ...DB,  location_lat: 51.670000, location_lng: -0.352991 },
+      'dockless', 'voi',
+    )
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('location'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — voi / pricings (ride)', () => {
+  const API_RIDE = {
+    id:                'uuid-ride-plan',
+    pricing_plan_name: 'dynamic_price',
+    name:              'unlock_fee',
+    amt:               0,
+    currency:          'GBP',
+    discount_id:       null,
+    discounted_amount: 0,
+    discounted_reason: null,
+    vehicle_type:      'ebike',
+    zone_id:           '327',
+    zone_name:         'London',
+    expiration_date:   '2026-07-01T00:00:00.000Z',
+  }
+  const DB_RIDE = {
+    pricing_plan_id:   'uuid-ride-plan',
+    pricing_plan_name: 'dynamic_price',
+    name:              'unlock_fee',
+    amt:               0,
+    currency:          'GBP',
+    discount_id:       null,
+    discounted_amount: 0,
+    discounted_reason: null,
+    vehicle_type:      'ebike',
+    zone_id:           '327',
+    zone_name:         'London',
+    expiration_date:   '2026-06-01T00:00:00.000Z',  // stale — captured earlier
+  }
+
+  it('Same — ride pricing, all static fields match (expiration_date dynamic = ignored)', () => {
+    const r = compareEntityFields(API_RIDE, DB_RIDE, 'pricings', 'voi')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — amt mismatch', () => {
+    const r = compareEntityFields({ ...API_RIDE, amt: 0.25 }, DB_RIDE, 'pricings', 'voi')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('amt'))).toBe(true)
+  })
+
+  it('Different — currency mismatch', () => {
+    const r = compareEntityFields({ ...API_RIDE, currency: 'EUR' }, DB_RIDE, 'pricings', 'voi')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('currency'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — voi / pricings (pass)', () => {
+  const API_PASS = {
+    id:                '8ce0bb5d-b922-4b2d-8bcb-732c7344dc60',
+    pricing_plan_name: 'Prepay and save',
+    name:              '30 minutes',
+    amt:               2.99,
+    currency:          'GBP',
+    descriptions:      'Valid for 1 day',
+    discounted_reason: 'Save 61% on a 10-min ride',
+    zone_id:           '327',
+    zone_name:         'London',
+  }
+  const DB_PASS = {
+    pricing_plan_id:   '8ce0bb5d-b922-4b2d-8bcb-732c7344dc60',
+    pricing_plan_name: 'Prepay and save',
+    name:              '30 minutes',
+    amt:               2.99,
+    currency:          'GBP',
+    descriptions:      'Valid for 1 day',
+    discounted_reason: 'Save 61% on a 10-min ride',
+    zone_id:           '327',
+    zone_name:         'London',
+  }
+
+  it('Same — pass pricing, all fields match', () => {
+    const r = compareEntityFields(API_PASS, DB_PASS, 'pricings', 'voi')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — descriptions mismatch', () => {
+    const r = compareEntityFields({ ...API_PASS, descriptions: 'Valid for 2 days' }, DB_PASS, 'pricings', 'voi')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('descriptions'))).toBe(true)
+  })
+
+  it('onlyWhen — ride-only fields (expiration_date, vehicle_type) not evaluated for pass entity', () => {
+    const r = compareEntityFields(API_PASS, { ...DB_PASS, vehicle_type: 'scooter', expiration_date: '2099-01-01T00:00:00.000Z' }, 'pricings', 'voi')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('onlyWhen — pass-only field (descriptions) not evaluated for ride entity', () => {
+    // API snapshot has expiration_date → detected as ride sub-type → descriptions row skipped.
+    // DB includes vehicle_type so the ride-only rows all match; only descriptions differs.
+    const rideApi = { ...API_PASS, expiration_date: '2026-07-01T00:00:00.000Z', vehicle_type: 'ebike' }
+    const rideDb  = { ...DB_PASS, vehicle_type: 'ebike', descriptions: 'WRONG' }
+    const r = compareEntityFields(rideApi, rideDb, 'pricings', 'voi')
+    expect(r.verdict).toBe('Same')
+  })
+})
+
+describe('compareEntityFields — voi / zones', () => {
+  const RULES_OBJ = { noRiding_isEnforced: true, vehicle_types: ['EBIKE'] }
+  const RULES_STR = JSON.stringify(RULES_OBJ)
+
+  const API = {
+    id:               'b512210a-e65b-40a7-a628-7c75b78f6521',
+    zone_name:        'Portobello Road',
+    area_type:        'no-riding',
+    area_description: null,
+    area_priority:    null,
+    area_zone_id:     '327',
+    vehicle_type:     'ebike',
+    geometry_type:    'MultiPolygon',
+    area_rules:       RULES_STR,
+  }
+  const DB = {
+    zone_id:          'b512210a-e65b-40a7-a628-7c75b78f6521',
+    zone_name:        'Portobello Road',
+    area_type:        'no-riding',
+    area_description: null,
+    area_priority:    null,
+    area_zone_id:     '327',
+    vehicle_type:     'ebike',
+    geometry_type:    'MultiPolygon',
+    area_rules:       RULES_STR,   // DB also stores as text
+  }
+
+  it('Same — all fields match (area_rules as JSON string both sides)', () => {
+    const r = compareEntityFields(API, DB, 'zones', 'voi')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Same — area_rules: API string vs DB string, structurally equal (parseJsonStr normalizes both)', () => {
+    const apiWithObj = { ...API, area_rules: RULES_STR }
+    const dbWithStr  = { ...DB,  area_rules: RULES_STR }
+    const r = compareEntityFields(apiWithObj, dbWithStr, 'zones', 'voi')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Different — area_rules content mismatch', () => {
+    const r = compareEntityFields(
+      API,
+      { ...DB, area_rules: JSON.stringify({ vehicle_types: ['SCOOTER'] }) },
+      'zones', 'voi',
+    )
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('area_rules'))).toBe(true)
+  })
+
+  it('Different — area_type mismatch', () => {
+    const r = compareEntityFields(API, { ...DB, area_type: 'no-parking' }, 'zones', 'voi')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('area_type'))).toBe(true)
+  })
+
+  it('Different — zone_id (id) mismatch', () => {
+    const r = compareEntityFields({ ...API, id: 'other-uuid' }, DB, 'zones', 'voi')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('zone_id'))).toBe(true)
+  })
+})
+
 describe('compareEntityFields — bolt / pricings (vehicle card)', () => {
   const API_CARD = {
     pricing_plan_id:   'ebike_unlock',

@@ -83,6 +83,11 @@ const isHfUnlock      = (api: ApiSnapshot) =>   'vehicleType' in api && api['nam
 const isBoltSubscription = (api: ApiSnapshot) => api['name'] === 'ride_pass'
 const isBoltVehicleCard  = (api: ApiSnapshot) => api['name'] !== 'ride_pass'
 
+// Voi pricings sub-type predicates
+// Ride pricings carry expiration_date (JWT exp); pass pricings do not.
+const isVoiRidePricing = (api: ApiSnapshot) => 'expiration_date' in api
+const isVoiPassPricing = (api: ApiSnapshot) => !('expiration_date' in api)
+
 export const HF_UNLOCK_DESCRIPTION =
   'Pay as you go rides only. ' +
   'Pay £1 to unlock, then choose a bike with 1,2,5,10 or 30 minutes included. ' +
@@ -245,6 +250,58 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
       { apiKey: 'currency',          dbKey: 'currency',          onlyWhen: isBoltVehicleCard  },
       { apiKey: 'vehicle_type',      dbKey: 'vehicle_type',      onlyWhen: isBoltVehicleCard  },
       { apiKey: 'descriptions',      dbKey: 'descriptions',      onlyWhen: isBoltVehicleCard  },
+    ],
+
+    docked: [],
+  },
+
+  voi: {
+    // GET /v2/rides/vehicles → dockless_fleets
+    dockless: [
+      { apiKey: 'id',            dbKey: 'vehicle_id'                                                                                                  },
+      { apiKey: 'name',          dbKey: 'name'                                                                                                        },
+      { apiKey: 'category',      dbKey: 'category'                                                                                                    },
+      { apiKey: 'zone_id',       dbKey: 'zone_id'                                                                                                     },
+      { apiKey: 'helmet_status', dbKey: 'helmet_status'                                                                                               },
+      { apiKey: 'battery',       dbKey: 'battery',      dynamic: true                                                                                 },
+      { apiKey: 'location_lat',  dbKey: 'location_lat', dynamic: true, threshold: { type: 'distance_m', maxMeters: 10000 }, latPair: 'location_lng'   },
+      { apiKey: 'location_lng',  dbKey: 'location_lng', dynamic: true                                                                                 },
+    ],
+
+    // GET /v2/rides/vehicles (JWT price_token decode) → pricings (ride sub-type)
+    // GET /v2/payments/layout/{zone_id}/product-page  → pricings (pass sub-type)
+    // Ride pricings carry expiration_date (JWT exp, changes per request → dynamic).
+    pricings: [
+      // Common ──────────────────────────────────────────────────────────────────
+      { apiKey: 'id',                dbKey: 'pricing_plan_id'                                  },
+      { apiKey: 'pricing_plan_name', dbKey: 'pricing_plan_name'                                },
+      { apiKey: 'name',              dbKey: 'name'                                             },
+      { apiKey: 'amt',               dbKey: 'amt'                                              },
+      { apiKey: 'currency',          dbKey: 'currency'                                         },
+      { apiKey: 'zone_id',           dbKey: 'zone_id'                                          },
+      { apiKey: 'zone_name',         dbKey: 'zone_name'                                        },
+      { apiKey: 'discounted_reason', dbKey: 'discounted_reason'                                },
+      // Ride pricing only ───────────────────────────────────────────────────────
+      { apiKey: 'vehicle_type',      dbKey: 'vehicle_type',      onlyWhen: isVoiRidePricing   },
+      { apiKey: 'discount_id',       dbKey: 'discount_id',       onlyWhen: isVoiRidePricing   },
+      { apiKey: 'discounted_amount', dbKey: 'discounted_amount', onlyWhen: isVoiRidePricing   },
+      { apiKey: 'expiration_date',   dbKey: 'expiration_date',   dynamic: true, onlyWhen: isVoiRidePricing },
+      // Pass pricing only ───────────────────────────────────────────────────────
+      { apiKey: 'descriptions',      dbKey: 'descriptions',      onlyWhen: isVoiPassPricing   },
+    ],
+
+    // GET /v1/rides/zones/{zone_id}/areas → zones
+    zones: [
+      { apiKey: 'id',               dbKey: 'zone_id'                                              },
+      { apiKey: 'zone_name',        dbKey: 'zone_name'                                            },
+      { apiKey: 'area_type',        dbKey: 'area_type'                                            },
+      { apiKey: 'area_description', dbKey: 'area_description'                                     },
+      { apiKey: 'area_priority',    dbKey: 'area_priority'                                        },
+      { apiKey: 'area_zone_id',     dbKey: 'area_zone_id'                                         },
+      { apiKey: 'vehicle_type',     dbKey: 'vehicle_type'                                         },
+      { apiKey: 'geometry_type',    dbKey: 'geometry_type'                                        },
+      // area_rules: adapter stores JSON.stringify(rules); DB stores text → parse both sides
+      { apiKey: 'area_rules',       dbKey: 'area_rules',  normalize: parseJsonStr                 },
     ],
 
     docked: [],

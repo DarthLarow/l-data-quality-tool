@@ -382,3 +382,36 @@ export async function getHumanForestZoneContext(
   )
   return rows[0] ?? null
 }
+
+export interface VoiAccountRow {
+  access_token:  string | null
+  refresh_token: string           // authenticationToken (~540 days)
+}
+
+export async function getVoiAccount(): Promise<VoiAccountRow | null> {
+  const rows = await scrapersQuery<VoiAccountRow>(
+    `SELECT a.access_token,
+            a.refresh_token
+     FROM accounts a
+     JOIN apps ap ON ap.id = a.app_id
+     WHERE ap.name = 'voi'
+       AND a.is_active = true
+     LIMIT 1`,
+  )
+  return rows[0] ?? null
+}
+
+export async function getVoiZoneId(polygonId: string): Promise<string | null> {
+  const rows = await scrapersQuery<{ zone_id: string }>(
+    `SELECT cc.extra_context->>'zone_id' AS zone_id
+     FROM city_polygons cp
+     JOIN cities c        ON c.id  = cp.city_id
+     JOIN city_configs cc ON cc.city_id = c.id
+     JOIN apps a          ON a.id  = c.app_id
+     WHERE a.name = 'voi'
+       AND cp.id::text = $1
+     LIMIT 1`,
+    [polygonId],
+  )
+  return rows[0]?.zone_id ?? null
+}

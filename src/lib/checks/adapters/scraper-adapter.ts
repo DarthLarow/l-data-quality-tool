@@ -2,6 +2,7 @@ import type { EntityType, ScraperEntity } from '@/types'
 import { ArioScraperApiAdapter } from './ario-adapter'
 import { BoltScraperApiAdapter } from './bolt-adapter'
 import { HumanForestScraperApiAdapter } from './human-forest-adapter'
+import { VoiScraperApiAdapter } from './voi-adapter'
 
 export interface PolygonBounds {
   polygonId:   string
@@ -51,6 +52,7 @@ export function getAdapterRegistry(): AdapterRegistry {
       ['ario',         new ArioScraperApiAdapter()],
       ['bolt',         new BoltScraperApiAdapter()],
       ['human_forest', new HumanForestScraperApiAdapter()],
+      ['voi',          new VoiScraperApiAdapter()],
     ])
   }
   return _registry
