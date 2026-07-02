@@ -415,3 +415,44 @@ export async function getVoiZoneId(polygonId: string): Promise<string | null> {
   )
   return rows[0]?.zone_id ?? null
 }
+
+export interface LyftAccountRow {
+  access_token:  string | null
+  refresh_token: string
+}
+
+export async function getLyftAccount(): Promise<LyftAccountRow | null> {
+  const rows = await scrapersQuery<LyftAccountRow>(
+    `SELECT a.access_token,
+            a.refresh_token
+     FROM accounts a
+     JOIN apps ap ON ap.id = a.app_id
+     WHERE ap.name = 'lyft'
+       AND a.is_active = true
+     LIMIT 1`,
+  )
+  return rows[0] ?? null
+}
+
+export interface LyftCityContextRow {
+  city_code: string
+  city_lat:  number | null
+  city_lon:  number | null
+}
+
+export async function getLyftCityContext(polygonId: string): Promise<LyftCityContextRow | null> {
+  const rows = await scrapersQuery<LyftCityContextRow>(
+    `SELECT cc.extra_context->>'city_code'        AS city_code,
+            (cc.extra_context->>'city_lat')::float AS city_lat,
+            (cc.extra_context->>'city_lon')::float AS city_lon
+     FROM city_polygons cp
+     JOIN cities c        ON c.id  = cp.city_id
+     JOIN city_configs cc ON cc.city_id = c.id
+     JOIN apps a          ON a.id  = c.app_id
+     WHERE a.name = 'lyft'
+       AND cp.id::text = $1
+     LIMIT 1`,
+    [polygonId],
+  )
+  return rows[0] ?? null
+}

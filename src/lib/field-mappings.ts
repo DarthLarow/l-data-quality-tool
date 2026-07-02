@@ -306,6 +306,47 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
 
     docked: [],
   },
+
+  lyft: {
+    // POST /v1/last-mile/map-items → dockless_fleets
+    dockless: [
+      { apiKey: 'id',           dbKey: 'vehicle_id'                                                                                                  },
+      { apiKey: 'name',         dbKey: 'name'                                                                                                        },
+      { apiKey: 'category',     dbKey: 'category'                                                                                                    },
+      { apiKey: 'battery',      dbKey: 'battery',      dynamic: true                                                                                 },
+      { apiKey: 'location_lat', dbKey: 'location_lat', dynamic: true, threshold: { type: 'distance_m', maxMeters: 10000 }, latPair: 'location_lng'   },
+      { apiKey: 'location_lng', dbKey: 'location_lng', dynamic: true                                                                                 },
+    ],
+
+    // POST /v1/lbsbff/map/inventory → docked_fleets
+    // num_bikes_available and num_docks_available change as bikes are rented → dynamic (ignored).
+    // is_installed / is_renting / is_returning reflect station status → static (flagged on change).
+    docked: [
+      { apiKey: 'station_id',          dbKey: 'station_id'                                                                                                },
+      { apiKey: 'station_name',        dbKey: 'station_name'                                                                                             },
+      { apiKey: 'location_lat',        dbKey: 'location_lat', dynamic: true, threshold: { type: 'distance_m', maxMeters: 10000 }, latPair: 'location_lng' },
+      { apiKey: 'location_lng',        dbKey: 'location_lng', dynamic: true                                                                               },
+      { apiKey: 'num_bikes_available', dbKey: 'num_bikes_available', dynamic: true                                                                        },
+      { apiKey: 'num_docks_available', dbKey: 'num_docks_available', dynamic: true                                                                        },
+      { apiKey: 'is_installed',        dbKey: 'is_installed'                                                                                              },
+      { apiKey: 'is_renting',          dbKey: 'is_renting'                                                                                                },
+      { apiKey: 'is_returning',        dbKey: 'is_returning'                                                                                              },
+    ],
+
+    // POST /v1/lbsbff/panel/pre-ride-station → pricings
+    pricings: [
+      { apiKey: 'pricing_plan_id',   dbKey: 'pricing_plan_id'   },
+      { apiKey: 'pricing_plan_name', dbKey: 'pricing_plan_name' },
+      { apiKey: 'vehicle_type',      dbKey: 'vehicle_type'      },
+      { apiKey: 'name',              dbKey: 'name'              },
+      { apiKey: 'amt',               dbKey: 'amt'               },
+      { apiKey: 'currency',          dbKey: 'currency'          },
+      { apiKey: 'descriptions',      dbKey: 'descriptions'      },
+      { apiKey: 'station_id',        dbKey: 'station_id'        },
+    ],
+
+    zones: [],
+  },
 }
 
 export function getFieldMapping(appId: string, entityType: string): FieldMapping {

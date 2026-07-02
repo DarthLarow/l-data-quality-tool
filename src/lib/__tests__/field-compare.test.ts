@@ -544,6 +544,211 @@ describe('compareEntityFields — voi / zones', () => {
   })
 })
 
+// ─── Lyft ─────────────────────────────────────────────────────────────────────
+
+describe('compareEntityFields — lyft / dockless', () => {
+  const API = {
+    id:           '1753470622359260384',
+    name:         '357-0868',
+    category:     'electric_bike',
+    battery:      99,
+    location_lat: 38.807043552,
+    location_lng: -77.108097911,
+  }
+  const DB = {
+    vehicle_id:   '1753470622359260384',
+    name:         '357-0868',
+    category:     'electric_bike',
+    battery:      99,
+    location_lat: 38.807043552,
+    location_lng: -77.108097911,
+  }
+
+  it('Same — all fields match', () => {
+    const r = compareEntityFields(API, DB, 'dockless', 'lyft')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — vehicle_id mismatch', () => {
+    const r = compareEntityFields({ ...API, id: '9999' }, DB, 'dockless', 'lyft')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('vehicle_id'))).toBe(true)
+  })
+
+  it('Different — category mismatch', () => {
+    const r = compareEntityFields({ ...API, category: 'scooter' }, DB, 'dockless', 'lyft')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('category'))).toBe(true)
+  })
+
+  it('Same — battery ignored (dynamic, no threshold)', () => {
+    const r = compareEntityFields({ ...API, battery: 5 }, { ...DB, battery: 95 }, 'dockless', 'lyft')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Same — GPS within 10km threshold (~200m)', () => {
+    const r = compareEntityFields(
+      { ...API, location_lat: 38.807043552, location_lng: -77.108097911 },
+      { ...DB,  location_lat: 38.809000000, location_lng: -77.108097911 },
+      'dockless', 'lyft',
+    )
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Different — GPS exceeds 10km threshold (~12km)', () => {
+    const r = compareEntityFields(
+      { ...API, location_lat: 38.807043552, location_lng: -77.108097911 },
+      { ...DB,  location_lat: 38.916000000, location_lng: -77.108097911 },
+      'dockless', 'lyft',
+    )
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('location'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — lyft / docked', () => {
+  const STATION_ID = '00284700-9d22-42ce-8485-113fed9879c1'
+  const API = {
+    station_id:          STATION_ID,
+    station_name:        STATION_ID,
+    location_lat:        40.764089,
+    location_lng:        -73.910651,
+    num_bikes_available: 29,
+    num_docks_available: 0,
+    is_installed:        1,
+    is_renting:          1,
+    is_returning:        1,
+  }
+  const DB = {
+    station_id:          STATION_ID,
+    station_name:        STATION_ID,
+    location_lat:        40.764089,
+    location_lng:        -73.910651,
+    num_bikes_available: 29,
+    num_docks_available: 0,
+    is_installed:        1,
+    is_renting:          1,
+    is_returning:        1,
+  }
+
+  it('Same — all fields match', () => {
+    const r = compareEntityFields(API, DB, 'docked', 'lyft')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — station_id mismatch', () => {
+    const r = compareEntityFields({ ...API, station_id: 'other-id' }, DB, 'docked', 'lyft')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('station_id'))).toBe(true)
+  })
+
+  it('Different — is_installed mismatch (station went offline)', () => {
+    const r = compareEntityFields({ ...API, is_installed: 0 }, DB, 'docked', 'lyft')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('is_installed'))).toBe(true)
+  })
+
+  it('Same — num_bikes_available ignored (dynamic, no threshold)', () => {
+    const r = compareEntityFields(
+      { ...API, num_bikes_available: 5  },
+      { ...DB,  num_bikes_available: 25 },
+      'docked', 'lyft',
+    )
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Same — num_docks_available ignored (dynamic, no threshold)', () => {
+    const r = compareEntityFields(
+      { ...API, num_docks_available: 0  },
+      { ...DB,  num_docks_available: 15 },
+      'docked', 'lyft',
+    )
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Same — GPS within 10km threshold', () => {
+    const r = compareEntityFields(
+      { ...API, location_lat: 40.764089, location_lng: -73.910651 },
+      { ...DB,  location_lat: 40.764200, location_lng: -73.910651 },
+      'docked', 'lyft',
+    )
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Different — GPS exceeds 10km threshold (~12km)', () => {
+    const r = compareEntityFields(
+      { ...API, location_lat: 40.764089, location_lng: -73.910651 },
+      { ...DB,  location_lat: 40.872000, location_lng: -73.910651 },
+      'docked', 'lyft',
+    )
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('location'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — lyft / pricings', () => {
+  const API = {
+    pricing_plan_id:   '2968a13c-8dfd-5649-8606-c84786d1a3f5',
+    pricing_plan_name: 'Unlock Fee',
+    vehicle_type:      'Ebike',
+    name:              'unlock',
+    amt:               4.99,
+    currency:          'USD',
+    descriptions:      '$4.99 to unlock',
+    station_id:        '1835247352748090208',
+  }
+  const DB = {
+    pricing_plan_id:   '2968a13c-8dfd-5649-8606-c84786d1a3f5',
+    pricing_plan_name: 'Unlock Fee',
+    vehicle_type:      'Ebike',
+    name:              'unlock',
+    amt:               4.99,
+    currency:          'USD',
+    descriptions:      '$4.99 to unlock',
+    station_id:        '1835247352748090208',
+  }
+
+  it('Same — all fields match', () => {
+    const r = compareEntityFields(API, DB, 'pricings', 'lyft')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — pricing_plan_id mismatch', () => {
+    const r = compareEntityFields({ ...API, pricing_plan_id: 'other-uuid' }, DB, 'pricings', 'lyft')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('pricing_plan_id'))).toBe(true)
+  })
+
+  it('Different — amt mismatch', () => {
+    const r = compareEntityFields({ ...API, amt: 3.99 }, DB, 'pricings', 'lyft')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('amt'))).toBe(true)
+  })
+
+  it('Different — currency mismatch', () => {
+    const r = compareEntityFields({ ...API, currency: 'GBP' }, DB, 'pricings', 'lyft')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('currency'))).toBe(true)
+  })
+
+  it('Different — vehicle_type mismatch', () => {
+    const r = compareEntityFields({ ...API, vehicle_type: 'Classic bike' }, DB, 'pricings', 'lyft')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('vehicle_type'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — lyft / zones', () => {
+  it('Same with skipped explanation — zones has no mapping for Lyft', () => {
+    const r = compareEntityFields({ id: 'z1' }, { zone_id: 'z1' }, 'zones', 'lyft')
+    expect(r.verdict).toBe('Same')
+    expect(r.explanation).toMatch(/No field mapping/)
+  })
+})
+
 describe('compareEntityFields — bolt / pricings (vehicle card)', () => {
   const API_CARD = {
     pricing_plan_id:   'ebike_unlock',
