@@ -107,6 +107,25 @@ function SessionProgressBar({ sessionId }: { sessionId: string }) {
 виконання (для довгих сесій на проді за serverless-лімітами краще винести
 executeCheckSession у чергу/воркер — поза скоупом цього покращення).
 
+### Розширення: checkpoint / resume сесії
+
+Довгі сесії (тайлові скрапери типу Ryde: Bærum = 4217 полігонів ≈ 1.5–2 год)
+зараз при будь-якій помилці стають `failed`, і Rerun запускає все з нуля.
+Ті самі поля прогресу дають фундамент для відновлення:
+
+- зберігати чекпоінт у `CheckSession`: які `entityType` вже завершені
+  (`EntityCheckSummary` існує) і останній оброблений полігон у поточному типі
+  (напр. `progressStage` → структуроване поле `checkpoint Json`:
+  `{ entityType, polygonIndex, partialResults? }`);
+- `runApiDbCheck` приймає `startFromIndex` і акумулює `polygonResults`
+  у чекпоінт (батчами, разом із тротленим оновленням прогресу);
+- кнопка **Resume** на `/sessions/[id]` для `failed`-сесій:
+  `POST /api/sessions/[id]/resume` → `executeCheckSession` продовжує
+  з чекпоінта замість створення нової сесії;
+- статус `failed` розділити на `failed` (логічна помилка) і
+  `interrupted` (інфраструктурна: scrapers_db недоступна, процес убито) —
+  Resume пропонувати саме для другого.
+
 ---
 
 ## 2. Прогресивна форма створення сесії
@@ -240,3 +259,72 @@ interface SessionDefect {
 - якщо сесія `failed` — дозволити, але додати в контекст промпта статус, щоб ШІ
   прокоментував падіння;
 - вартість/latency: один виклик на сесію, контекст ~кілька КБ — прийнятно.
+
+---
+
+## 4. Стійкість з'єднання зі scrapers_db (port-forward)
+
+**Проблема:** `kubectl port-forward` періодично відвалюється (idle-таймаути,
+зміна мережі, рестарт API-сервера) і **сам не перепідключається**. `scrapersQuery`
+не має ретраїв, тому будь-який збій порта під час перевірки миттєво валить усю
+сесію в `failed` — для довгих тайлових сесій (1.5–2 год) це втрата годин роботи.
+Адаптери ходять у scrapers_db на кожен полігон (city context), тож вікно
+вразливості — вся тривалість сесії.
+
+### Чернетка реалізації
+
+**Частина А — супервізор порт-форварда** (`scripts/scrapers-db-stage.sh`,
+аналогічно prod-скрипту):
+
+```bash
+# замість одиночного виклику kubectl port-forward:
+while true; do
+  kubectl port-forward "$SERVICE" "$LOCAL_PORT:$REMOTE_PORT" -n "$NAMESPACE"
+  echo "⚠️  port-forward впав ($(date '+%H:%M:%S')), перепідключення через 2с..."
+  sleep 2
+done
+```
+
+Форвард відновлюється за ~2–5 с. Ctrl+C коректно вбиває і цикл, і kubectl
+(SIGINT доходить в обидва); за потреби — `trap 'exit 0' INT`.
+
+**Частина Б — ретраї connection-помилок у `scrapersQuery`**
+(`src/lib/scrapers-db.ts`). Все читання зі scrapers_db — ідемпотентні SELECT,
+тому повтор безпечний:
+
+```typescript
+const RETRYABLE = ['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', '57P01', '08006', '08003']
+const isRetryable = (e: unknown) => {
+  const err = e as { code?: string; message?: string }
+  return RETRYABLE.includes(err.code ?? '')
+    || /connection terminated|timeout exceeded when trying to connect/i.test(err.message ?? '')
+}
+
+export async function scrapersQuery<T>(sql: string, params: unknown[] = []): Promise<T[]> {
+  const MAX_ATTEMPTS = 4                       // ~5+10+15с бекофу — перекриває рестарт форварда
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const client = await getPool().connect()
+      try {
+        const result = await client.query(sql, params)
+        return result.rows as T[]
+      } finally {
+        client.release()
+      }
+    } catch (e) {
+      if (attempt >= MAX_ATTEMPTS || !isRetryable(e)) throw e
+      console.warn(`scrapersQuery retry ${attempt}/${MAX_ATTEMPTS - 1} after connection error`)
+      await new Promise((r) => setTimeout(r, attempt * 5000))
+    }
+  }
+}
+```
+
+Нюанси:
+- при обриві форварда мертві з'єднання лишаються в пулі — після connection-помилки
+  варто скинути пул (`pool.end()` + перестворення в `getPool()`), інакше ретрай
+  може дістати з пула вже мертвий клієнт;
+- ретраїти **тільки** connection-помилки: синтаксичні/логічні помилки SQL мають
+  падати одразу;
+- А+Б разом дають безшовне відновлення: форвард встає за ~2с, перший же ретрай
+  (5с) проходить. Довші збої страхує checkpoint/resume із розділу 1.
