@@ -372,3 +372,81 @@ export async function scrapersQuery<T>(sql: string, params: unknown[] = []): Pro
   падати одразу;
 - А+Б разом дають безшовне відновлення: форвард встає за ~2с, перший же ретрай
   (5с) проходить. Довші збої страхує checkpoint/resume із розділу 1.
+
+---
+
+## 5. Нормальні серверні логи
+
+**Проблема — одночасно «немає сигналу» і «багато шуму»:**
+- в оркестраторі та адаптерах логів **немає взагалі** (3 `console.error` на весь
+  `src/`) — довга сесія (тайлові скрапери, 1.5–2 год) годинами мовчить у консолі:
+  не видно ні поточного полігона, ні ретраїв, ні підозр на блок;
+- при цьому термінал dev-сервера заливає стандартний request-лог Next.js
+  (кожен вхідний запит, компіляції роутів) — за активної роботи UI це сотні
+  рядків шуму, серед яких губляться навіть ті 3 наявні `console.error`.
+
+### Чернетка реалізації
+
+**1. Легкий логер без залежностей** — `src/lib/logger.ts`:
+
+```typescript
+type Level = 'debug' | 'info' | 'warn' | 'error'
+const LEVELS: Record<Level, number> = { debug: 0, info: 1, warn: 2, error: 3 }
+const MIN = LEVELS[(process.env.LOG_LEVEL as Level) ?? 'info']
+
+export function createLogger(scope: string) {
+  const log = (level: Level, msg: string, extra?: object) => {
+    if (LEVELS[level] < MIN) return
+    const ts = new Date().toISOString().slice(11, 19)
+    console[level === 'debug' ? 'log' : level](
+      `${ts} ${level.toUpperCase().padEnd(5)} [${scope}] ${msg}`,
+      ...(extra ? [JSON.stringify(extra)] : []),
+    )
+  }
+  return {
+    debug: (m: string, e?: object) => log('debug', m, e),
+    info:  (m: string, e?: object) => log('info', m, e),
+    warn:  (m: string, e?: object) => log('warn', m, e),
+    error: (m: string, e?: object) => log('error', m, e),
+  }
+}
+```
+
+`LOG_LEVEL` у `.env.local` (default `info`). Якщо згодом знадобиться JSON-формат /
+транспорти — точка заміни одна (перехід на `pino` не зачепить call sites).
+
+**2. Сигнал там, де його бракує:**
+- `orchestrator.ts`: старт/фініш сесії (id, appId, типи, к-ть полігонів),
+  завершення кожного entityType з підсумком (`totalUniqueInApi/found/notFound`,
+  тривалість), помилка перед `failed`;
+- `api-db-check.ts`: рядок прогресу кожні N полігонів
+  (`info: dockless 250/4217 полігонів, знайдено 34 сутності`) — до появи
+  прогрес-бару (розділ 1) це єдина видимість; ретраї та `suspectedBlock` — `warn`;
+- адаптери: refresh токена, 401-ретраї, `ApiUnexpectedResponseError` — `warn`;
+  per-запит деталі — лише `debug`;
+- `scrapersQuery`: connection-ретраї з розділу 4 — `warn`.
+
+**3. Прибрати шум Next.js** — `next.config.ts`:
+
+```typescript
+const nextConfig = {
+  logging: {
+    incomingRequests: false, // request-лог dev-сервера (Next 15.2+)
+    fetches: { fullUrl: false },
+  },
+}
+```
+
+За бажання — не глушити повністю, а лишити тільки не-GET або помилки
+(`incomingRequests: { ignore: [/^GET \/(api\/(sessions|dashboard)|_next)/] }`).
+
+**4. (Опційно, разом із розділом 1)** — дублювати `warn`/`error` сесії в БД
+(поле `CheckSession.logTail Json` або окрема таблиця) для post-mortem
+без доступу до термінала.
+
+**Нюанси:**
+- рівень `debug` для per-полігонних/per-запитних деталей — вмикається точково
+  через `LOG_LEVEL=debug`, коли треба дебажити конкретний адаптер;
+- не логувати токени/креденшели (у extra передавати лише статуси й лічильники);
+- прогрес-рядки з п.2 стануть зайвими після реалізації прогрес-бару — тоді
+  їх можна понизити до `debug`.
