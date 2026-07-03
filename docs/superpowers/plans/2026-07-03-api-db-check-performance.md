@@ -75,6 +75,10 @@
   Застосувати: ryde (`getRydeCityContext`), bolt, lyft, voi (`getVoiZoneId`),
   human_forest. TTL 15 хв — процес довгоживучий (dev-сервер), конфіги міст
   майже статичні; TTL страхує від протухання.
+  **Кешується тільки per-city контекст** (cityId, gps_lat/gps_lng, cityUnit) —
+  per-tile параметри (iotLa/iotLo/nearRadius/phoneLa/phoneLo у Ryde) в БД не
+  ходять: `tileParams(polygon)` обчислює їх з `PolygonBounds` (polygon_type /
+  boundBox), які вже резолвляться один раз на сесію. У кеш вони не потрапляють.
   `npx tsc --noEmit`, `npx vitest run`.
 
 - [ ] **Крок 4 — крос-тайловий кеш деталей Ryde**
