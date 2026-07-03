@@ -45,29 +45,33 @@ X-Frame-Options: DENY
 Розшифровка: `base64 decode → AES-128-CBC decrypt (той самий key/IV) → unpad → JSON.parse`.
 Node: `crypto.createDecipheriv('aes-128-cbc', key, iv)`. Якщо у відповіді немає ні `scooters`/`ebikes`, ні `key2`/`key` — `ApiUnexpectedResponseError`.
 
-### City context (з `city_configs.extra_context`, ключі — точно як у pydantic-схемах)
+### City context (**підтверджено з stage scrapers_db**)
+
+`city_configs.extra_context` (90 міст): `{cityId, cityRa, gps_lat, gps_lng, cityUnit}`
+— наприклад `{"cityId":95,"cityRa":20,"gps_lat":51.514244,"gps_lng":7.468429,"cityUnit":"EUR"}`.
 
 | Ключ | Використання |
 |------|--------------|
-| `cityId` (int) | dockless list + detail, pricings |
-| `iotLa`, `iotLo` (float) | dockless list (центр пошуку) |
-| `nearRadius` (default 1) | dockless list — радіус пошуку |
+| `cityId` (int) | dockless list + detail, pricings; = `zone_id`/`area_zone_id` в БД |
 | `gps_lat`, `gps_lng` (float) | zones (`gpsLa`/`gpsLo` у payload) |
 | `cityUnit` (string) | pricings — валюта (пріоритет над `rule.feeCur`) |
-| `helmeted` (int) | dockless — `helmet_status` |
+| `cityRa` (int) | радіус міста — адаптеру не потрібен |
+
+`helmeted` **відсутній** і в city_configs, і в task extra_context → у БД `helmet_status = null`
+(підтверджено семплами). Адаптер ставить `helmet_status: null`.
+
+`iotLa`/`iotLo`/`nearRadius` живуть у **`collection_tasks.extra_context`** (per-tile):
+`{lat1, lat2, lon1, lon2, iotLa, iotLo, gps_lat, gps_lng, nearRadius: 0.53}` —
+`iotLa`/`iotLo` = центр тайла (bbox `lat1..lat2 × lon1..lon2`, ~1×1 км), `nearRadius = 0.53` (константа).
 
 ### Polygon strategy
 
 | Entity type | Strategy | Причина |
 |-------------|----------|---------|
-| `dockless`  | `'center_only'`* | Запит будується з city context (`iotLa`/`iotLo`), не з полігона |
+| `dockless`  | `'all'` | Тайловий fan-out: 622 931 полігон у ryde, задача на кожен тайл; `iotLa`/`iotLo` = центр полігона (з `bound_box`), `nearRadius = 0.53` |
 | `pricings`  | `'center_only'` | Один запит `getFeeRuleByCityId` на місто |
-| `zones`     | `'center_only'` | Один запит `getCityFences` на місто |
+| `zones`     | `'center_only'` | Один запит `getCityFences` на місто (повертає всі фенси міста, до ~2568 в Oslo) |
 | `docked`    | n/a | Немає спайдера → `[]` |
-
-\* Відкрите питання №3: чи fан-аутить зовнішня система dockless по тайлах через
-`collection_tasks.extra_context` (override `iotLa`/`iotLo`) — тоді стратегія `'all'`
-з координатами з `polygon_type`.
 
 ---
 
@@ -115,16 +119,15 @@ Payload: `{cityId, deviceIMEI, isSacn: "2", phoneLa: iotLa, phoneLo: iotLo, qrCo
 | `zone_id` | `String(cityId)` |
 | `zone_name` | назва міста (з `PolygonBounds.city`) |
 | `category` | vehicle_type зі списку (`scooter`/`ebike`); fallback: `deviceType === "2"` → `"scooter"` |
-| `helmet_status` | `String(helmeted)` з context |
+| `helmet_status` | `null` (`helmeted` немає в context — підтверджено: у БД `null`) |
 
 Скрапер пропускає рядки без `vehicle_id`/lat/lng/battery і дедуплікує по `vehicle_id`.
 
-**Fan-out cap:** деталі — окремий HTTP-запит на кожен IMEI. Рішення (залежить від
-відкритого питання №4 — скільки транспорту на місто): будувати сутності зі
-**списку** (`vehicle_id = memberByString`, lat/lng з `coordinate`, category), а
-деталі (`name`, `battery`, точний `lastGps`) дотягувати лише для перших
-`MAX_VEHICLE_DETAILS` (пропозиція: 20 — покриває максимальний AI sample size).
-Якщо кількість помірна (<100/місто) — повний fan-out з паузою ~150ms між запитами.
+**Fan-out cap (вирішено):** у Trondheim (сесія 268) — 1180 транспортів зі 118 тайлів,
+**~10 на тайл**. Оскільки стратегія `'all'` (запит на полігон = один тайл), detail
+fan-out на полігон малий → робити **повний обхід IMEI тайла** з паузою ~150ms,
+із запобіжником `MAX_VEHICLE_DETAILS = 50` на полігон (тайли з > 50 транспортів
+обрізаються). ID-множина для перевірки повноти все одно береться зі списку.
 
 ### Pricings — `POST /appRyde/getFeeRuleByCityId`
 
@@ -195,16 +198,24 @@ Payload: `{gpsLa: gps_lat, gpsLo: gps_lng, userCityId: ""}`. Відповідь:
 
 ---
 
-## Відкриті питання (розв'язати через scrapers_db до імплементації)
+## Підтверджені факти зі scrapers_db (stage, сесія 268, 2026-07-03)
 
-| # | Питання | Як перевірити |
-|---|---------|---------------|
-| 1 | `apps.name` для Ryde = `'ryde'`? id? Остання сесія з даними? | `SELECT id, name FROM apps WHERE name ILIKE '%ryde%'`; останні collection_tasks |
-| 2 | Фактичні ключі/значення `city_configs.extra_context` (cityId, iotLa/iotLo, nearRadius, gps_lat/gps_lng, cityUnit, helmeted) | `SELECT extra_context FROM city_configs cc JOIN cities c ... WHERE a.name='ryde'` |
-| 3 | Чи є per-polygon override `iotLa`/`iotLo` у `collection_tasks.extra_context` (тайли → стратегія `'all'`) чи один центр на місто (`'center_only'`) | Подивитись extra_context кількох collection_tasks однієї сесії/міста |
-| 4 | Кількість dockless на місто (розмір fan-out деталей) → рішення про `MAX_VEHICLE_DETAILS` vs повний обхід | `SELECT city_polygon_id, count(*) FROM dockless_fleets WHERE session..., GROUP BY` |
-| 5 | `accounts.access_token` для ryde присутній і живий? (refresh-флоу немає — якщо токен протух, адаптер може тільки повідомити помилку) | `SELECT access_token IS NOT NULL FROM accounts ... WHERE a.name='ryde' AND is_active` |
-| 6 | Семпли рядків dockless/pricings/zones у БД — підтвердити формат `vehicle_id` (IMEI), `zone_id` (cityId), `area_rules` (формат JSON-рядка) | `SELECT * FROM ... LIMIT 3` для кожного типу |
+| # | Питання | Відповідь |
+|---|---------|-----------|
+| 1 | app | `apps.name = 'ryde'`, `id = 11`; остання сесія — 268 (618 251 задача, 622 931 полігон у ryde) ✓ |
+| 2 | `city_configs.extra_context` | `{cityId, cityRa, gps_lat, gps_lng, cityUnit}` — 90 міст; `helmeted` **немає** → `helmet_status = null` ✓ |
+| 3 | Стратегія полігонів | Тайловий fan-out підтверджено: task extra_context = `{lat1, lat2, lon1, lon2, iotLa, iotLo, gps_lat, gps_lng, nearRadius: 0.53}`, `iotLa/iotLo` = центр тайла → dockless `'all'`, `nearRadius = 0.53` (константа) ✓ |
+| 4 | Fan-out деталей | Trondheim: 1180 транспортів / 118 тайлів = ~10 на тайл → повний обхід IMEI тайла, запобіжник 50 ✓ |
+| 5 | Акаунт | `access_token` є (32 символи), `refresh_token` **немає**, `is_active = true`. Статичний токен, без refresh ✓ |
+| 6 | Семпли БД | Див. нижче ✓ |
+
+**Семпли (сесія 268):**
+- dockless: `{"vehicle_id":"861685071656215","name":"319768","battery":95,"location_lat":63.354675,"location_lng":10.407025,"zone_id":"5","zone_name":"Trondheim","category":"scooter","helmet_status":null}` — `vehicle_id` = IMEI, `zone_id` = cityId ✓
+- pricings: `{"zone_id":"98","vehicle_type":"scooter","pricing_plan_name":"pricing","name":"unlock_fee","amt":10,"currency":"SEK","pricing_plan_id":"20e504de-40b0-58d0-941e-72972220c0b2","station_id":null,"zone_name":"Höganäs"}` — формула `uuidv5("98_scooter_unlock_fee")` **верифікована проти БД, точний збіг** ✓; `currency` = `cityUnit` (SEK/EUR), `amt` поділений на 100 ✓
+- zones: `zone_id` = `fenId` (діапазон 29–107134), `area_type` `"1"`/`"3"`/`"4"`, `area_zone_id` = cityId, `area_rules` = `"{\"outNoRide\": 0, \"isLimitSpeed\": 0, ...}"` — **Python-спейсинг** → mapping через `normalize: parseJsonStr` ✓
+- Зауваження: ~1.3% зон (419 з 31 470 за сьогодні) мають `zone_name` із суфіксом `_part` — оператор так називає розбиті фенси в самому API; ID-матчинг не ламається
+
+**Обсяги:** зон на місто до 2568 (Oslo), 2545 (Hamburg) — один запит `getCityFences` повертає всі; ок.
 
 ---
 
@@ -219,28 +230,25 @@ Payload: `{gpsLa: gps_lat, gpsLo: gps_lng, userCityId: ""}`. Відповідь:
   export async function getRydeAccount(): Promise<RydeAccountRow | null>
 
   export interface RydeCityContextRow {
-    city_id:     number | null
-    iot_la:      number | null
-    iot_lo:      number | null
-    near_radius: number | null
-    gps_lat:     number | null
-    gps_lng:     number | null
-    city_unit:   string | null
-    helmeted:    number | null
+    city_id:   number | null  // extra_context->>'cityId'
+    gps_lat:   number | null  // extra_context->>'gps_lat'
+    gps_lng:   number | null  // extra_context->>'gps_lng'
+    city_unit: string | null  // extra_context->>'cityUnit'
   }
   export async function getRydeCityContext(polygonId: string): Promise<RydeCityContextRow | null>
   ```
-  (точні JSON-ключі extra_context — після відповіді на питання №2). `npx tsc --noEmit`.
+  `iotLa`/`iotLo` для dockless — центр полігона з `PolygonBounds.boundBox`
+  (не з city context), `nearRadius = 0.53` — константа адаптера. `npx tsc --noEmit`.
 
 - [ ] **Step 2 — adapter**
   Створити `src/lib/checks/adapters/ryde-adapter.ts`:
   - `generateTimeSign(timestampMs)` + `decryptResponsePayload(obj)` через `node:crypto` (aes-128-cbc, key `a70678d869319dab`, IV `0102330405070708`)
   - `post(url, payload)`: form-urlencoded body з `token`/`timestamp`/`timeSign`, базові headers; не-ok відповідь → `ApiUnexpectedResponseError`
-  - `fetchDockless`: list → (розшифрувати за потреби) → IMEI + coordinates → деталі (з capом за рішенням питання №4)
+  - `fetchDockless`: list (центр полігона, `nearRadius = 0.53`) → (розшифрувати за потреби) → IMEI + coordinates → деталі по кожному IMEI (пауза ~150ms, cap `MAX_VEHICLE_DETAILS = 50`)
   - `fetchPricings`: getFeeRuleByCityId → до 5 рядків з uuid5-ідентифікаторами
   - `fetchZones`: getCityFences → маппінг fences
   - `fetchDocked` (docked) → `[]`
-  - `polygonStrategy`: `'center_only'` для всіх (або `'all'` для dockless — питання №3)
+  - `polygonStrategy`: `'all'` для dockless, `'center_only'` для решти
   `npx tsc --noEmit`.
 
 - [ ] **Step 3 — field mappings**
