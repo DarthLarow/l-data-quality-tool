@@ -307,6 +307,52 @@ const FIELD_MAPPINGS: Record<string, Record<string, FieldMapping>> = {
     docked: [],
   },
 
+  ryde: {
+    // POST /appRyde/getNearScootersNew + /appRyde/getScooterInfoByCode → dockless_fleets
+    // helmet_status is always null for Ryde (no helmeted flag anywhere in context).
+    dockless: [
+      { apiKey: 'id',            dbKey: 'vehicle_id'                                                                                                  },
+      { apiKey: 'name',          dbKey: 'name'                                                                                                        },
+      { apiKey: 'category',      dbKey: 'category'                                                                                                    },
+      { apiKey: 'zone_id',       dbKey: 'zone_id'                                                                                                     },
+      { apiKey: 'zone_name',     dbKey: 'zone_name'                                                                                                   },
+      { apiKey: 'helmet_status', dbKey: 'helmet_status'                                                                                               },
+      { apiKey: 'battery',       dbKey: 'battery',      dynamic: true                                                                                 },
+      { apiKey: 'location_lat',  dbKey: 'location_lat', dynamic: true, threshold: { type: 'distance_m', maxMeters: 10000 }, latPair: 'location_lng'   },
+      { apiKey: 'location_lng',  dbKey: 'location_lng', dynamic: true                                                                                 },
+    ],
+
+    // POST /appRyde/getFeeRuleByCityId → pricings
+    // One rule per city → up to 5 fee rows; pricing_plan_id = uuidv5("{cityId}_{vehicle_type}_{name}").
+    pricings: [
+      { apiKey: 'id',                dbKey: 'pricing_plan_id'   },
+      { apiKey: 'pricing_plan_name', dbKey: 'pricing_plan_name' },
+      { apiKey: 'name',              dbKey: 'name'              },
+      { apiKey: 'amt',               dbKey: 'amt'               },
+      { apiKey: 'currency',          dbKey: 'currency'          },
+      { apiKey: 'vehicle_type',      dbKey: 'vehicle_type'      },
+      { apiKey: 'zone_id',           dbKey: 'zone_id'           },
+      { apiKey: 'zone_name',         dbKey: 'zone_name'         },
+      { apiKey: 'station_id',        dbKey: 'station_id'        },
+    ],
+
+    // POST /appRyde/getCityFences → zones
+    zones: [
+      { apiKey: 'id',               dbKey: 'zone_id'                                              },
+      { apiKey: 'zone_name',        dbKey: 'zone_name'                                            },
+      { apiKey: 'area_type',        dbKey: 'area_type'                                            },
+      { apiKey: 'area_description', dbKey: 'area_description'                                     },
+      { apiKey: 'area_priority',    dbKey: 'area_priority'                                        },
+      { apiKey: 'area_zone_id',     dbKey: 'area_zone_id'                                         },
+      { apiKey: 'vehicle_type',     dbKey: 'vehicle_type'                                         },
+      { apiKey: 'geometry_type',    dbKey: 'geometry_type'                                        },
+      // area_rules: adapter stores compact JSON, DB stores Python-spaced JSON → parse both sides
+      { apiKey: 'area_rules',       dbKey: 'area_rules',  normalize: parseJsonStr                 },
+    ],
+
+    docked: [],
+  },
+
   lyft: {
     // POST /v1/last-mile/map-items → dockless_fleets
     dockless: [

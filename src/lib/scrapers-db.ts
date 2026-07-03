@@ -456,3 +456,44 @@ export async function getLyftCityContext(polygonId: string): Promise<LyftCityCon
   )
   return rows[0] ?? null
 }
+
+export interface RydeAccountRow {
+  access_token: string | null // static token, no refresh flow exists for Ryde
+}
+
+export async function getRydeAccount(): Promise<RydeAccountRow | null> {
+  const rows = await scrapersQuery<RydeAccountRow>(
+    `SELECT a.access_token
+     FROM accounts a
+     JOIN apps ap ON ap.id = a.app_id
+     WHERE ap.name = 'ryde'
+       AND a.is_active = true
+     LIMIT 1`,
+  )
+  return rows[0] ?? null
+}
+
+export interface RydeCityContextRow {
+  city_id:   number | null
+  gps_lat:   number | null
+  gps_lng:   number | null
+  city_unit: string | null
+}
+
+export async function getRydeCityContext(polygonId: string): Promise<RydeCityContextRow | null> {
+  const rows = await scrapersQuery<RydeCityContextRow>(
+    `SELECT (cc.extra_context->>'cityId')::int    AS city_id,
+            (cc.extra_context->>'gps_lat')::float AS gps_lat,
+            (cc.extra_context->>'gps_lng')::float AS gps_lng,
+            cc.extra_context->>'cityUnit'         AS city_unit
+     FROM city_polygons cp
+     JOIN cities c        ON c.id  = cp.city_id
+     JOIN city_configs cc ON cc.city_id = c.id
+     JOIN apps a          ON a.id  = c.app_id
+     WHERE a.name = 'ryde'
+       AND cp.id::text = $1
+     LIMIT 1`,
+    [polygonId],
+  )
+  return rows[0] ?? null
+}

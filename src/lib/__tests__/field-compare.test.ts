@@ -749,6 +749,185 @@ describe('compareEntityFields — lyft / zones', () => {
   })
 })
 
+// ─── Ryde ─────────────────────────────────────────────────────────────────────
+
+describe('compareEntityFields — ryde / dockless', () => {
+  // Real stage sample (session 268, Trondheim): vehicle_id = IMEI, name = code
+  const API = {
+    id:            '861685071656215',
+    name:          '319768',
+    category:      'scooter',
+    zone_id:       '5',
+    zone_name:     'Trondheim',
+    helmet_status: null,
+    battery:       95,
+    location_lat:  63.354675,
+    location_lng:  10.407025,
+  }
+  const DB = {
+    vehicle_id:    '861685071656215',
+    name:          '319768',
+    category:      'scooter',
+    zone_id:       '5',
+    zone_name:     'Trondheim',
+    helmet_status: null,
+    battery:       95,
+    location_lat:  63.354675,
+    location_lng:  10.407025,
+  }
+
+  it('Same — all fields match (helmet_status null on both sides)', () => {
+    const r = compareEntityFields(API, DB, 'dockless', 'ryde')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — vehicle_id mismatch', () => {
+    const r = compareEntityFields({ ...API, id: '861685072705870' }, DB, 'dockless', 'ryde')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('vehicle_id'))).toBe(true)
+  })
+
+  it('Same — battery ignored (dynamic, no threshold)', () => {
+    const r = compareEntityFields({ ...API, battery: 12 }, { ...DB, battery: 95 }, 'dockless', 'ryde')
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Same — GPS within 10km threshold', () => {
+    const r = compareEntityFields(
+      { ...API, location_lat: 63.354675, location_lng: 10.407025 },
+      { ...DB,  location_lat: 63.360000, location_lng: 10.410000 },
+      'dockless', 'ryde',
+    )
+    expect(r.verdict).toBe('Same')
+  })
+
+  it('Different — GPS exceeds 10km threshold (~11km)', () => {
+    const r = compareEntityFields(
+      { ...API, location_lat: 63.354675, location_lng: 10.407025 },
+      { ...DB,  location_lat: 63.455000, location_lng: 10.407025 },
+      'dockless', 'ryde',
+    )
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('location'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — ryde / pricings', () => {
+  // Real stage sample (session 268, Höganäs): uuidv5("98_scooter_unlock_fee")
+  const API = {
+    id:                '20e504de-40b0-58d0-941e-72972220c0b2',
+    pricing_plan_name: 'pricing',
+    name:              'unlock_fee',
+    amt:               10,
+    currency:          'SEK',
+    vehicle_type:      'scooter',
+    zone_id:           '98',
+    zone_name:         'Höganäs',
+    station_id:        null,
+  }
+  const DB = {
+    pricing_plan_id:   '20e504de-40b0-58d0-941e-72972220c0b2',
+    pricing_plan_name: 'pricing',
+    name:              'unlock_fee',
+    amt:               10,
+    currency:          'SEK',
+    vehicle_type:      'scooter',
+    zone_id:           '98',
+    zone_name:         'Höganäs',
+    station_id:        null,
+  }
+
+  it('Same — all fields match', () => {
+    const r = compareEntityFields(API, DB, 'pricings', 'ryde')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — amt mismatch (fee changed)', () => {
+    const r = compareEntityFields({ ...API, amt: 15 }, DB, 'pricings', 'ryde')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('amt'))).toBe(true)
+  })
+
+  it('Different — currency mismatch', () => {
+    const r = compareEntityFields({ ...API, currency: 'NOK' }, DB, 'pricings', 'ryde')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('currency'))).toBe(true)
+  })
+
+  it('Different — pricing_plan_id mismatch', () => {
+    const r = compareEntityFields({ ...API, id: 'dce71675-b790-5aec-b8cd-5d4a9bf00307' }, DB, 'pricings', 'ryde')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('pricing_plan_id'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — ryde / zones', () => {
+  // Adapter emits compact JSON; DB stores Python-spaced json.dumps output.
+  const RULES_COMPACT = '{"outNoRide":0,"isLimitSpeed":0,"prohibitLock":0,"openAreaType":1,"zoneDesign":0}'
+  const RULES_PYTHON  = '{"outNoRide": 0, "isLimitSpeed": 0, "prohibitLock": 0, "openAreaType": 1, "zoneDesign": 0}'
+
+  const API = {
+    id:               '33308',
+    zone_name:        'IPZ- Bussholdeplass Bratsbergveien-15',
+    area_type:        '0',
+    area_description: 'fid:Turer som stopper her blir rabbatert.',
+    area_priority:    null,
+    area_zone_id:     '5',
+    vehicle_type:     null,
+    geometry_type:    'MultiPolygon',
+    area_rules:       RULES_COMPACT,
+  }
+  const DB = {
+    zone_id:          '33308',
+    zone_name:        'IPZ- Bussholdeplass Bratsbergveien-15',
+    area_type:        '0',
+    area_description: 'fid:Turer som stopper her blir rabbatert.',
+    area_priority:    null,
+    area_zone_id:     '5',
+    vehicle_type:     null,
+    geometry_type:    'MultiPolygon',
+    area_rules:       RULES_PYTHON,
+  }
+
+  it('Same — area_rules compact JSON vs Python-spaced JSON (parseJsonStr normalizes both)', () => {
+    const r = compareEntityFields(API, DB, 'zones', 'ryde')
+    expect(r.verdict).toBe('Same')
+    expect(r.mismatches).toHaveLength(0)
+  })
+
+  it('Different — area_rules content mismatch', () => {
+    const r = compareEntityFields(
+      API,
+      { ...DB, area_rules: '{"outNoRide": 1, "isLimitSpeed": 0, "prohibitLock": 0, "openAreaType": 1, "zoneDesign": 0}' },
+      'zones', 'ryde',
+    )
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('area_rules'))).toBe(true)
+  })
+
+  it('Different — zone_name mismatch', () => {
+    const r = compareEntityFields({ ...API, zone_name: 'NPZ - Ugla Skole' }, DB, 'zones', 'ryde')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('zone_name'))).toBe(true)
+  })
+
+  it('Different — zone_id (fenId) mismatch', () => {
+    const r = compareEntityFields({ ...API, id: '33307' }, DB, 'zones', 'ryde')
+    expect(r.verdict).toBe('Different')
+    expect(r.mismatches.some((m) => m.includes('zone_id'))).toBe(true)
+  })
+})
+
+describe('compareEntityFields — ryde / docked', () => {
+  it('Same with skipped explanation — docked has no mapping for Ryde', () => {
+    const r = compareEntityFields({ id: 's1' }, { station_id: 's1' }, 'docked', 'ryde')
+    expect(r.verdict).toBe('Same')
+    expect(r.explanation).toMatch(/No field mapping/)
+  })
+})
+
 describe('compareEntityFields — bolt / pricings (vehicle card)', () => {
   const API_CARD = {
     pricing_plan_id:   'ebike_unlock',

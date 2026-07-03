@@ -3,6 +3,7 @@ import { ArioScraperApiAdapter } from './ario-adapter'
 import { BoltScraperApiAdapter } from './bolt-adapter'
 import { HumanForestScraperApiAdapter } from './human-forest-adapter'
 import { LyftScraperApiAdapter } from './lyft-adapter'
+import { RydeScraperApiAdapter } from './ryde-adapter'
 import { VoiScraperApiAdapter } from './voi-adapter'
 
 export interface PolygonBounds {
@@ -55,6 +56,7 @@ export function getAdapterRegistry(): AdapterRegistry {
       ['human_forest', new HumanForestScraperApiAdapter()],
       ['voi',          new VoiScraperApiAdapter()],
       ['lyft',         new LyftScraperApiAdapter()],
+      ['ryde',         new RydeScraperApiAdapter()],
     ])
   }
   return _registry
