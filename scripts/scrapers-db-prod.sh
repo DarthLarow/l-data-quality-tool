@@ -10,4 +10,14 @@ REMOTE_PORT=5432
 echo "🔌 [PROD] Підключення до $SERVICE в namespace $NAMESPACE..."
 echo "Порт-форвард: localhost:$LOCAL_PORT -> $REMOTE_PORT"
 
-kubectl -n "$NAMESPACE" port-forward "$SERVICE" "$LOCAL_PORT:$REMOTE_PORT" --address='0.0.0.0'
+# Ctrl+C виходить із циклу (а не лише вбиває поточний kubectl).
+trap 'echo; echo "👋 Зупинено."; exit 0' INT
+
+# Супервізор: kubectl port-forward періодично відвалюється (idle-таймаути, зміна
+# мережі, рестарт API-сервера) і сам не перепідключається. Цикл піднімає його
+# знову за ~2с, щоб довгі сесії не падали через тимчасовий обрив.
+while true; do
+  kubectl -n "$NAMESPACE" port-forward "$SERVICE" "$LOCAL_PORT:$REMOTE_PORT" --address='0.0.0.0'
+  echo "⚠️  port-forward впав ($(date '+%H:%M:%S')), перепідключення через 2с..."
+  sleep 2
+done

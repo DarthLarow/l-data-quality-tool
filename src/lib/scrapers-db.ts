@@ -12,8 +12,28 @@ function getPool(): Pool {
       password: process.env.SCRAPERS_DB_PASSWORD,
       ssl: false,
     })
+    // A pool without an error handler crashes the process when an idle client
+    // dies (e.g. the port-forward drops). Swallow it — resetPool() rebuilds.
+    pool.on('error', () => {})
   }
   return pool
+}
+
+// After a connection error the pool may hold dead clients pointing at a
+// now-broken port-forward. Tear it down so the next getPool() rebuilds fresh.
+async function resetPool(): Promise<void> {
+  const dead = pool
+  pool = null
+  if (dead) { try { await dead.end() } catch { /* already broken */ } }
+}
+
+// Connection-level failures worth retrying (the port-forward dropped and is
+// coming back). Logical/SQL errors are NOT here — they must fail immediately.
+const RETRYABLE_CODES = ['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', '57P01', '08006', '08003', '08001']
+function isRetryable(e: unknown): boolean {
+  const err = e as { code?: string; message?: string }
+  return RETRYABLE_CODES.includes(err.code ?? '')
+    || /connection terminated|timeout exceeded when trying to connect|server closed the connection/i.test(err.message ?? '')
 }
 
 export async function pingScrapersDb(): Promise<void> {
@@ -22,12 +42,22 @@ export async function pingScrapersDb(): Promise<void> {
 }
 
 export async function scrapersQuery<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-  const client = await getPool().connect()
-  try {
-    const result = await client.query(sql, params)
-    return result.rows as T[]
-  } finally {
-    client.release()
+  const MAX_ATTEMPTS = 4 // ~5+10+15s of backoff — covers a port-forward restart
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const client = await getPool().connect()
+      try {
+        const result = await client.query(sql, params)
+        return result.rows as T[]
+      } finally {
+        client.release()
+      }
+    } catch (e) {
+      if (attempt >= MAX_ATTEMPTS || !isRetryable(e)) throw e
+      console.warn(`scrapersQuery retry ${attempt}/${MAX_ATTEMPTS - 1} after connection error`)
+      await resetPool() // drop dead clients before retrying
+      await new Promise((r) => setTimeout(r, attempt * 5000))
+    }
   }
 }
 

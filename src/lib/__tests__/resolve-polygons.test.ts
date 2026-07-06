@@ -10,6 +10,8 @@ vi.mock('pg', () => {
   // Must use regular function so it can be called with `new Pool(...)`
   function Pool(this: Record<string, unknown>) {
     this.connect = vi.fn().mockResolvedValue({ query: mockClientQuery, release: mockRelease })
+    this.on      = vi.fn()          // error handler registration
+    this.end     = vi.fn().mockResolvedValue(undefined)
   }
   return { Pool }
 })
