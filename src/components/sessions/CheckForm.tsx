@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { EntityType, CheckType, Environment, PolygonStrategy, CheckSessionInput } from '@/types'
 import { ENTITY_TYPES } from '@/types'
+import { SessionProgressBar } from '@/components/sessions/SessionProgressBar'
 
 interface ScraperOption {
   appId:  string
@@ -95,8 +96,9 @@ export function CheckForm() {
   const searchParams = useSearchParams()
 
   const [scrapers, setScrapers] = useState<ScraperOption[]>([])
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [loading,            setLoading]          = useState(false)
+  const [error,              setError]            = useState<string | null>(null)
+  const [launchedSessionId,  setLaunchedSessionId] = useState<string | null>(null)
 
   const [environment,               setEnvironment]     = useState<Environment>('staging')
   const [appId,                     setAppId]           = useState(searchParams.get('scraper') ?? '')
@@ -203,7 +205,7 @@ export function CheckForm() {
       })
       const data = await res.json() as { sessionId?: string; error?: string }
       if (!res.ok) throw new Error(data.error ?? 'Unknown error')
-      router.push(`/sessions/${data.sessionId}`)
+      setLaunchedSessionId(data.sessionId ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setLoading(false)
@@ -468,6 +470,23 @@ export function CheckForm() {
         >
           {loading ? 'Running…' : 'Run Check →'}
         </button>
+        {launchedSessionId ? (
+          <>
+            {/* Session launched — show progress bar */}
+            <div className="mt-[4px]">
+              <SessionProgressBar sessionId={launchedSessionId} />
+            </div>
+            {/* Link to session page */}
+            <button
+              type="button"
+              onClick={() => router.push(`/sessions/${launchedSessionId}`)}
+              className="mt-[10px] text-[12.5px] font-medium underline-offset-2"
+              style={{ color: 'var(--dq-blue)', textDecoration: 'underline' }}
+            >
+              Open session →
+            </button>
+          </>
+        ) : (
         <span className="font-mono text-[11.5px]"
           style={{
             color:      'var(--dq-text-7)',
@@ -475,6 +494,7 @@ export function CheckForm() {
           }}>
           · {selectedEntityTypes.length} entity type{selectedEntityTypes.length !== 1 ? 's' : ''}
         </span>
+        )}
       </div>
 
     </form>

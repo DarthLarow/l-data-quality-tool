@@ -24,6 +24,9 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
       aiSampleSize:      0, // field kept in DB schema for backwards compat; field compare has no limit
       status:            'running',
       triggeredBy:       'manual',
+      totalPolygons:     0,
+      completedPolygons: 0,
+      progressMessage:   'Preparing…',
     },
   })
 
@@ -51,11 +54,48 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
     const orderedEntityTypes = [...(input.entityTypes as EntityType[])]
       .sort((a, b) => ENTITY_ORDER[a] - ENTITY_ORDER[b])
 
+    // Count how many polygons will actually be processed per entity type
+    const polygonCountByType = new Map<EntityType, number>()
+    if (adapter && resolvedPolygons.length > 0) {
+      for (const et of orderedEntityTypes) {
+        const strategy   = adapter.polygonStrategy?.(et) ?? 'all'
+        const isCenter   = (p: typeof resolvedPolygons[number]) =>
+          p.polygonType?.['is_center'] === 'true' || p.polygonType?.['is_center'] === true
+        const centers    = resolvedPolygons.filter(isCenter)
+        const effective  = strategy === 'center_only'
+          ? (centers.length > 0 ? 1 : 1)
+          : resolvedPolygons.length
+        polygonCountByType.set(et, effective)
+      }
+    }
+    const totalPolygons = [...polygonCountByType.values()].reduce((s, n) => s + n, 0)
+
+    await prisma.checkSession.update({
+      where: { id: session.id },
+      data: { totalPolygons, progressMessage: `Starting — ${orderedEntityTypes.length} entity type(s)` },
+    })
+
+    // Cumulative counter shared across all progress callbacks — closures capture this
+    let cumulativeCompleted = 0
+    const updateProgress = async (entityCompleted: number, message: string) => {
+      cumulativeCompleted += entityCompleted
+      await prisma.checkSession.update({
+        where: { id: session.id },
+        data: { completedPolygons: cumulativeCompleted, progressMessage: message },
+      })
+    }
+
     for (const entityType of orderedEntityTypes) {
       if (checks.has('api_db') || checks.has('ai')) {
         if (!adapter) throw new Error(`No adapter registered for appId: ${input.appId}`)
 
-        const result = await runApiDbCheck(input, adapter, entityType, resolvedPolygons)
+        const result = await runApiDbCheck(
+          input,
+          adapter,
+          entityType,
+          resolvedPolygons,
+          (entityCompleted, _total, msg) => updateProgress(entityCompleted, msg),
+        )
 
         if (checks.has('api_db')) {
           // Snapshot completeness counters (generic across two-step adapters):

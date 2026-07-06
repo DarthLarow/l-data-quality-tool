@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
 import Link          from 'next/link'
 import { prisma }   from '@/lib/quality-db'
-import { SessionResultsTabs } from '@/components/sessions/SessionResultsTabs'
-import { RerunButton }        from '@/components/sessions/RerunButton'
+import { SessionResultsTabs }      from '@/components/sessions/SessionResultsTabs'
+import { RerunButton }             from '@/components/sessions/RerunButton'
+import { SessionProgressBarWrapper } from '@/components/sessions/SessionProgressBarWrapper'
 
 function formatPolygon(strategyIds: string[], resolvedIds: string[]): string {
   if (!strategyIds || strategyIds.length === 0) return '—'
@@ -51,15 +52,12 @@ export default async function SessionPage({
       polygonChecks:        true,
       sessionDeltaChecks:   true,
       aiComparisons:        true,
+      scraper:              true,
     },
   })
   if (!session) notFound()
 
-  const scraperRecord = await prisma.scraper.findFirst({
-    where: { appId: session.appId },
-    select: { name: true },
-  })
-  const scraperName = scraperRecord?.name ?? session.appId
+  const scraperName = session.scraper?.name ?? session.appId
 
   const envLive = session.environment === 'production'
   const isRun   = session.status === 'running'
@@ -158,6 +156,18 @@ export default async function SessionPage({
           <RerunButton sessionId={session.id} />
         </div>
       </div>
+
+      {/* Progress bar — only shown while session is running */}
+      {isRun && (
+        <SessionProgressBarWrapper
+          sessionId={session.id}
+          initialProgress={{
+            totalPolygons:     session.totalPolygons,
+            completedPolygons: session.completedPolygons,
+            progressMessage:   session.progressMessage,
+          }}
+        />
+      )}
 
       <SessionResultsTabs session={session} />
     </div>

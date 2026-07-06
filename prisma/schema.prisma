@@ -35,6 +35,9 @@ model CheckSession {
   aiSampleSize      Int      @default(5)
   status            String   @default("running")
   triggeredBy       String   @default("manual")
+  totalPolygons     Int      @default(0)
+  completedPolygons Int      @default(0)
+  progressMessage    String?
 
   scraper              Scraper              @relation(fields: [appId], references: [appId])
   polygonChecks        PolygonCheck[]

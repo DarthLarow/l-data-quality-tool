@@ -6,11 +6,18 @@ import type { CheckSessionInput, EntityType, ApiDbCheckResult, PolygonCheckResul
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
+export type PolygonProgressCallback = (
+  completed: number,
+  total: number,
+  message: string,
+) => void
+
 export async function runApiDbCheck(
   input: CheckSessionInput,
   adapter: ScraperApiAdapter,
   entityType: EntityType,
   allPolygons: PolygonBounds[],
+  onPolygonProgress?: PolygonProgressCallback,
 ): Promise<ApiDbCheckResult> {
   const polygonResults: PolygonCheckResult[] = []
   const allApiIds = new Set<string>()
@@ -97,6 +104,7 @@ export async function runApiDbCheck(
   const workers   = Math.max(1, adapter.maxConcurrentPolygons ?? 1)
   const baseDelay = adapter.interPolygonDelayMs ?? 500
   let next = 0
+  let completed = 0
 
   adapter.beginRun?.(entityType)
   try {
@@ -108,11 +116,18 @@ export async function runApiDbCheck(
           // First `workers` polygons start immediately; the rest are paced.
           if (i >= workers) await sleep(baseDelay + Math.random() * baseDelay * 0.5)
           await processPolygon(polygons[i]!)
+          completed++
+          onPolygonProgress?.(
+            completed,
+            polygons.length,
+            `Checking ${entityType} — polygon ${completed}/${polygons.length}`,
+          )
         }
       }),
     )
   } finally {
     adapter.endRun?.(entityType)
+    onPolygonProgress?.(polygons.length, polygons.length, `Completed ${entityType} — all ${polygons.length} polygon(s)`)
   }
 
   const uniqueIds = Array.from(allApiIds)
