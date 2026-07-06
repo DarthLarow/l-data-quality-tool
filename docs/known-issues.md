@@ -6,7 +6,9 @@
 
 ---
 
-## 1. List-only снепшоти проходять field-compare і дають хибний «Different»
+## 1. List-only снепшоти проходять field-compare і дають хибний «Different» ✅ ВИРІШЕНО (2026-07-06)
+
+> **Статус:** реалізовано generic-механізм (усі 3 кроки). Деталі — в кінці розділу.
 
 ### Проблема
 
@@ -111,3 +113,36 @@ model EntityCheckSummary {
 - у результатах сесії видно частку збагачених сутностей і причину пропусків;
 - механізм задокументований у `docs/adding-new-scraper.md` як обов'язковий
   для адаптерів з двоетапним збором.
+
+### Як реалізовано (2026-07-06)
+
+Generic-механізм розрізняє **два ортогональні класи** неповноти:
+
+| Клас | Приклад | Примітив |
+|---|---|---|
+| **A. Неповний снепшот** (ID-множина повна, поля частини сутностей — лише зі списку) | Ryde `MAX_VEHICLE_DETAILS=50` | прапорець `_snapshot` на `ScraperEntity` |
+| **B. Обрізана множина** (сутності поза капом взагалі відсутні) | Lyft `MAX_PRICING_STATIONS=5` | `adapter.collectionNote(entityType)` → `coverageNote` |
+
+Обидва тримають оркестратор вільним від скрапер-специфіки — він читає прапорці
+й передає ноту з адаптера, не знаючи про самі капи.
+
+- **Крок 1:** `AiVerdict += 'Skipped'`; `ScraperEntity._snapshot?: 'detailed' | 'list_only'`
+  (`src/types/index.ts`). Ryde `fetchDockless` проставляє прапорець (detail-гілка
+  → `detailed`, понад кап → `list_only`).
+- **Крок 2:** `orchestrator.ts` перед `compareEntityFields` — якщо
+  `_snapshot === 'list_only'`, пише `verdict: 'Skipped'` і `continue`
+  (порівняння полів не виконується). Повнота ID-множини не змінюється.
+- **Крок 3:** `EntityCheckSummary` отримав `detailedCount` / `listOnlyCount` /
+  `coverageNote` (міграція `20260706044857_entity_summary_coverage`). Оркестратор
+  рахує лічильники з `apiEntityMap` і пише `adapter.collectionNote?.(entityType)`.
+  Опційний метод `collectionNote` додано в `ScraperApiAdapter`; реалізовано в
+  Ryde (dockless) і Lyft (pricings). UI: `AiResultsTab` — фільтр `Skipped` +
+  сірий бейдж; `ApiDbResultsTab` — рядок покриття «N collected · M enriched (X%)»
+  і warning з `coverageNote`, показується лише коли кап спрацював.
+
+Тести: `ryde-adapter.test.ts` (прапорець detailed/list_only на межі капу 50 +
+`collectionNote`), `orchestrator.test.ts` (Skipped-гілка без виклику
+`compareEntityFields`; лічильники й нота в summary). tsc + 147/147 зелені.
+
+Механізм задокументовано в `docs/adding-new-scraper.md` (секція 8) як
+обов'язковий для адаптерів із двоетапним збором.

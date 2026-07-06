@@ -230,6 +230,7 @@ export class RydeScraperApiAdapter implements ScraperApiAdapter {
           zone_name:     zoneName,
           category:      ref.vehicleType,
           helmet_status: null,
+          _snapshot:     'detailed',
         }
         this.detailCache.set(ref.imei, entity)
       } else {
@@ -244,6 +245,7 @@ export class RydeScraperApiAdapter implements ScraperApiAdapter {
           zone_name:     zoneName,
           category:      ref.vehicleType,
           helmet_status: null,
+          _snapshot:     'list_only',
         }
       }
 

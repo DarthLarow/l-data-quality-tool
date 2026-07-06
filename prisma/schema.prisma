@@ -64,6 +64,9 @@ model EntityCheckSummary {
   totalNotFoundInDb Int
   failedPolygons    String[] @default([])
   suspectedBlock    Boolean  @default(false)
+  detailedCount     Int      @default(0) // entities with a full snapshot
+  listOnlyCount     Int      @default(0) // entities beyond the detail cap (list-only)
+  coverageNote      String?              // from adapter.collectionNote()
 
   checkSession CheckSession @relation(fields: [checkSessionId], references: [id], onDelete: Cascade)
 }

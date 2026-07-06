@@ -2,7 +2,7 @@ export type EntityType = 'dockless' | 'docked' | 'pricings' | 'zones'
 export type CheckType = 'api_db' | 'ai' | 'delta'
 export type Environment = 'staging' | 'production'
 export type DeltaFlag = 'ok' | 'warning' | 'critical'
-export type AiVerdict = 'Same' | 'Different'
+export type AiVerdict = 'Same' | 'Different' | 'Skipped'
 export type PolygonStrategy = 'random' | 'by_id' | 'by_city_all' | 'by_city_random'
 export type CheckStatus = 'running' | 'completed' | 'failed'
 
@@ -11,6 +11,10 @@ export const CHECK_TYPES: CheckType[] = ['api_db', 'ai', 'delta']
 
 export interface ScraperEntity {
   id: string
+  /** Snapshot completeness for two-step (list → detail) adapters.
+   *  Absent = 'detailed'. 'list_only' entities have fields only from the list
+   *  response (detail cap exceeded) and must skip field comparison. */
+  _snapshot?: 'detailed' | 'list_only'
   [key: string]: unknown
 }
 

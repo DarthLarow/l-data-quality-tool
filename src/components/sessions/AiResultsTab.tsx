@@ -223,6 +223,7 @@ function VerdictBadge({ verdict }: { verdict: string }) {
   const STYLES: Record<string, { color: string; bg: string }> = {
     Same:      { color: 'var(--dq-green)', bg: 'var(--dq-green-bg)' },
     Different: { color: 'var(--dq-red)',   bg: 'var(--dq-red-bg)'   },
+    Skipped:   { color: 'var(--dq-text-4)', bg: 'var(--dq-border-1)' },
   }
   const s = STYLES[verdict] ?? { color: 'var(--dq-text-4)', bg: 'var(--dq-border-1)' }
   return (
@@ -239,6 +240,7 @@ const VERDICT_FILTERS = [
   { value: 'all',       label: 'All'       },
   { value: 'Same',      label: 'Same'      },
   { value: 'Different', label: 'Different' },
+  { value: 'Skipped',   label: 'Skipped'   },
 ] as const
 
 type VerdictFilter = typeof VERDICT_FILTERS[number]['value']
@@ -246,6 +248,7 @@ type VerdictFilter = typeof VERDICT_FILTERS[number]['value']
 const VERDICT_COLOR: Record<string, string> = {
   Same:      'var(--dq-green)',
   Different: 'var(--dq-red)',
+  Skipped:   'var(--dq-text-6)',
 }
 
 const PAGE_SIZE = 25

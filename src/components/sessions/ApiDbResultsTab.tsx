@@ -20,6 +20,13 @@ export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
     : 0
   const notFoundIds = [...new Set(polygonChecks.flatMap((p) => p.notFoundInDb as string[]))]
 
+  // Snapshot coverage: how many entities were enriched with full details vs
+  // list-only (detail cap exceeded). Total is over collected entities, not the
+  // unique-in-API set, so it reflects what field comparison actually saw.
+  const collected     = summary.detailedCount + summary.listOnlyCount
+  const enrichedPct    = collected > 0 ? Math.round((summary.detailedCount / collected) * 100) : 100
+  const showCoverage   = summary.listOnlyCount > 0 || Boolean(summary.coverageNote)
+
   return (
     <div>
       {/* Stats row */}
@@ -46,6 +53,30 @@ export function ApiDbResultsTab({ summary, polygonChecks }: Props) {
         <span style={{ color: 'var(--dq-text-8)' }}>·</span>
         <span style={{ color: pctColor(pct), fontWeight: 500 }}>{pct}%</span>
       </div>
+
+      {/* Snapshot coverage (two-step adapters): shown only when a cap kicked in */}
+      {showCoverage && (
+        <div
+          className="mt-[10px] rounded-[6px] px-[10px] py-[6px] font-mono text-[12px]"
+          style={{
+            background: 'var(--dq-amber-bg)',
+            border:     '1px solid color-mix(in srgb, var(--dq-amber) 25%, transparent)',
+            color:      'var(--dq-amber)',
+          }}
+        >
+          {summary.listOnlyCount > 0 && (
+            <div>
+              {collected} collected · {summary.detailedCount} enriched with details ({enrichedPct}%)
+              {' · '}{summary.listOnlyCount} list-only (field compare skipped)
+            </div>
+          )}
+          {summary.coverageNote && (
+            <div style={{ marginTop: summary.listOnlyCount > 0 ? '4px' : 0 }}>
+              ⚠ {summary.coverageNote}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Suspected block warning */}
       {summary.suspectedBlock && (

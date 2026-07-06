@@ -58,6 +58,13 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
         const result = await runApiDbCheck(input, adapter, entityType, resolvedPolygons)
 
         if (checks.has('api_db')) {
+          // Snapshot completeness counters (generic across two-step adapters):
+          // list_only = entity fields came from the list response only (detail
+          // cap exceeded); everything else counts as detailed.
+          const snapshots     = [...result.apiEntityMap.values()]
+          const listOnlyCount = snapshots.filter((e) => e._snapshot === 'list_only').length
+          const detailedCount = snapshots.length - listOnlyCount
+
           await prisma.entityCheckSummary.create({
             data: {
               checkSessionId:    session.id,
@@ -67,6 +74,9 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
               totalNotFoundInDb: result.totalNotFoundInDb,
               failedPolygons:    result.polygonResults.flatMap((p) => p.failedPolygons),
               suspectedBlock:    result.suspectedBlock,
+              detailedCount,
+              listOnlyCount,
+              coverageNote:      adapter.collectionNote?.(entityType) ?? null,
             },
           })
 
@@ -95,6 +105,28 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
             if (!dbSnapshot) continue
 
             const apiSnapshot  = result.apiEntityMap.get(entityId) ?? { id: entityId }
+
+            // List-only snapshots (two-step adapters beyond their detail cap) lack
+            // static fields — field comparison would falsely report 'Different'.
+            // Record a neutral 'Skipped' verdict instead. Completeness is unaffected:
+            // the entity still counts in the API/DB ID sets.
+            if (apiSnapshot._snapshot === 'list_only') {
+              await prisma.aiComparison.create({
+                data: {
+                  checkSessionId: session.id,
+                  entityType,
+                  entityId,
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                  apiSnapshot: JSON.parse(JSON.stringify(apiSnapshot)),
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                  dbSnapshot:  JSON.parse(JSON.stringify(dbSnapshot)),
+                  verdict:     'Skipped',
+                  explanation: 'List-only snapshot (перевищено detail cap) — порівняння полів не виконувалось',
+                },
+              })
+              continue
+            }
+
             const comparison   = compareEntityFields(apiSnapshot, dbSnapshot, entityType, input.appId)
 
             await prisma.aiComparison.create({
