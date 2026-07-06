@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/quality-db'
 import { getScrapersApps, getCitiesForApps } from '@/lib/scrapers-db'
 import { getAdapterRegistry } from '@/lib/checks/adapters/scraper-adapter'
+import { logger } from '@/lib/logger'
 import type { EntityType } from '@/types'
 
 // All entity types supported by default; refine per-scraper when API docs are available
@@ -25,7 +26,7 @@ export async function POST() {
       }
       citiesMap = byName
     } catch (citiesErr) {
-      console.error('[sync] getCitiesForApps failed (cities will be empty):', citiesErr)
+      logger.warn('[sync] getCitiesForApps failed (cities will be empty)', { error: String(citiesErr) })
     }
 
     await Promise.all(
@@ -53,7 +54,7 @@ export async function POST() {
     const message = error instanceof Error
       ? `${error.constructor.name}: ${error.message}`
       : String(error)
-    console.error('[sync] failed:', error)
+    logger.error('[sync] failed', { error: String(error) })
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

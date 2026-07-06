@@ -1,4 +1,5 @@
 import { Pool } from 'pg'
+import { logger } from './logger'
 
 let pool: Pool | null = null
 
@@ -54,7 +55,7 @@ export async function scrapersQuery<T>(sql: string, params: unknown[] = []): Pro
       }
     } catch (e) {
       if (attempt >= MAX_ATTEMPTS || !isRetryable(e)) throw e
-      console.warn(`scrapersQuery retry ${attempt}/${MAX_ATTEMPTS - 1} after connection error`)
+      logger.warn(`scrapersQuery retry ${attempt}/${MAX_ATTEMPTS - 1} after connection error`)
       await resetPool() // drop dead clients before retrying
       await new Promise((r) => setTimeout(r, attempt * 5000))
     }
