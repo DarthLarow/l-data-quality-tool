@@ -344,7 +344,7 @@ export async function getBoltCityContext(
      JOIN city_configs cc ON cc.city_id = c.id
      JOIN apps a          ON a.id  = c.app_id
      WHERE a.name = 'bolt'
-       AND cp.id::text = $1
+       AND cp.id = $1::int
      LIMIT 1`,
     [polygonId],
   )
@@ -374,7 +374,7 @@ export async function getHumanForestZoneContext(
      WHERE a.name = 'human_forest'
        AND ct.payload::jsonb->'extra_context'->>'location_id' IS NOT NULL
        AND cp.city_id = (
-             SELECT city_id FROM city_polygons WHERE id::text = $1 LIMIT 1
+             SELECT city_id FROM city_polygons WHERE id = $1::int LIMIT 1
            )
      ORDER BY ct.id DESC
      LIMIT 1`,
@@ -409,7 +409,7 @@ export async function getVoiZoneId(polygonId: string): Promise<string | null> {
      JOIN city_configs cc ON cc.city_id = c.id
      JOIN apps a          ON a.id  = c.app_id
      WHERE a.name = 'voi'
-       AND cp.id::text = $1
+       AND cp.id = $1::int
      LIMIT 1`,
     [polygonId],
   )
@@ -450,7 +450,7 @@ export async function getLyftCityContext(polygonId: string): Promise<LyftCityCon
      JOIN city_configs cc ON cc.city_id = c.id
      JOIN apps a          ON a.id  = c.app_id
      WHERE a.name = 'lyft'
-       AND cp.id::text = $1
+       AND cp.id = $1::int
      LIMIT 1`,
     [polygonId],
   )
@@ -491,7 +491,7 @@ export async function getRydeCityContext(polygonId: string): Promise<RydeCityCon
      JOIN city_configs cc ON cc.city_id = c.id
      JOIN apps a          ON a.id  = c.app_id
      WHERE a.name = 'ryde'
-       AND cp.id::text = $1
+       AND cp.id = $1::int
      LIMIT 1`,
     [polygonId],
   )

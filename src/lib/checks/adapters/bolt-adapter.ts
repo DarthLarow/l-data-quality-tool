@@ -1,4 +1,5 @@
-import { getBoltAccount, getBoltCityContext } from '@/lib/scrapers-db'
+import { getBoltAccount, getBoltCityContext, type BoltCityContextRow } from '@/lib/scrapers-db'
+import { TtlCache } from './ttl-cache'
 import type { ScraperApiAdapter, PolygonBounds } from './scraper-adapter'
 import { ApiUnexpectedResponseError } from './scraper-adapter'
 import type { EntityType, ScraperEntity } from '@/types'
@@ -154,6 +155,14 @@ export class BoltScraperApiAdapter implements ScraperApiAdapter {
   appId = 'bolt'
   readonly interPolygonDelayMs = 1000
   private account: BoltAccount | null = null
+  // country/tile_id are per-city; cache by city to avoid a per-tile DB lookup
+  // (dockless uses the 'all' strategy → one call per tile without the cache).
+  private cityContextCache = new TtlCache<BoltCityContextRow | null>()
+
+  private getCityContext(polygon: PolygonBounds): Promise<BoltCityContextRow | null> {
+    const cacheKey = polygon.city ?? polygon.polygonId
+    return this.cityContextCache.getOrLoad(cacheKey, () => getBoltCityContext(polygon.polygonId))
+  }
 
   polygonStrategy(entityType: EntityType): 'all' | 'center_only' {
     return entityType === 'dockless' ? 'all' : 'center_only'
@@ -317,7 +326,7 @@ export class BoltScraperApiAdapter implements ScraperApiAdapter {
   // ─── Dockless ─────────────────────────────────────────────────────────────────
 
   private async fetchDockless(polygon: PolygonBounds, account: BoltAccount): Promise<ScraperEntity[]> {
-    const ctx = await getBoltCityContext(polygon.polygonId)
+    const ctx = await this.getCityContext(polygon)
     if (!ctx) throw new Error(`No Bolt city context found for polygon ${polygon.polygonId}`)
 
     const bb = this.parseBoundBox(polygon)
@@ -366,7 +375,7 @@ export class BoltScraperApiAdapter implements ScraperApiAdapter {
   // ─── Zones ────────────────────────────────────────────────────────────────────
 
   private async fetchZones(polygon: PolygonBounds, account: BoltAccount): Promise<ScraperEntity[]> {
-    const ctx = await getBoltCityContext(polygon.polygonId)
+    const ctx = await this.getCityContext(polygon)
     if (!ctx) throw new Error(`No Bolt city context found for polygon ${polygon.polygonId}`)
 
     const bb = this.parseBoundBox(polygon)
@@ -424,7 +433,7 @@ export class BoltScraperApiAdapter implements ScraperApiAdapter {
   // ─── Pricings ─────────────────────────────────────────────────────────────────
 
   private async fetchPricings(polygon: PolygonBounds, account: BoltAccount): Promise<ScraperEntity[]> {
-    const ctx = await getBoltCityContext(polygon.polygonId)
+    const ctx = await this.getCityContext(polygon)
     if (!ctx) throw new Error(`No Bolt city context found for polygon ${polygon.polygonId}`)
 
     const bb = this.parseBoundBox(polygon)

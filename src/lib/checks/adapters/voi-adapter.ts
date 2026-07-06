@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import { getVoiAccount, getVoiZoneId } from '@/lib/scrapers-db'
 import { uuidv5 } from '@/lib/uuid5'
+import { TtlCache } from './ttl-cache'
 import type { ScraperApiAdapter, PolygonBounds } from './scraper-adapter'
 import { ApiUnexpectedResponseError } from './scraper-adapter'
 import type { EntityType, ScraperEntity } from '@/types'
@@ -104,6 +105,8 @@ export class VoiScraperApiAdapter implements ScraperApiAdapter {
   appId = 'voi'
   readonly interPolygonDelayMs = 500
   private account: VoiAccount | null = null
+  // zone_id is per-city; cache by city to avoid a DB lookup on every call.
+  private zoneIdCache = new TtlCache<string | null>()
 
   polygonStrategy(_entityType: EntityType): 'all' | 'center_only' {
     return 'center_only'
@@ -115,7 +118,8 @@ export class VoiScraperApiAdapter implements ScraperApiAdapter {
     const account = await this.getAccount()
     if (!account.accessToken) await this.refreshToken(account)
 
-    const zoneId = await getVoiZoneId(polygon.polygonId)
+    const cacheKey = polygon.city ?? polygon.polygonId
+    const zoneId = await this.zoneIdCache.getOrLoad(cacheKey, () => getVoiZoneId(polygon.polygonId))
     if (!zoneId) throw new Error(`No zone_id found for Voi polygon ${polygon.polygonId}`)
 
     switch (entityType) {

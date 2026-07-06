@@ -43,7 +43,15 @@ export async function runCheckSession(input: CheckSessionInput): Promise<string>
       ? await resolvePolygons(input.appId, input.polygonIds)
       : []
 
-    for (const entityType of input.entityTypes as EntityType[]) {
+    // Fast, city-level entity types first; dockless (per-tile, two-step) last,
+    // so partial results land early while the long crawl is still running.
+    const ENTITY_ORDER: Record<EntityType, number> = {
+      zones: 0, pricings: 1, docked: 2, dockless: 3,
+    }
+    const orderedEntityTypes = [...(input.entityTypes as EntityType[])]
+      .sort((a, b) => ENTITY_ORDER[a] - ENTITY_ORDER[b])
+
+    for (const entityType of orderedEntityTypes) {
       if (checks.has('api_db') || checks.has('ai')) {
         if (!adapter) throw new Error(`No adapter registered for appId: ${input.appId}`)
 

@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
-import { getLyftAccount, getLyftCityContext } from '@/lib/scrapers-db'
+import { getLyftAccount, getLyftCityContext, type LyftCityContextRow } from '@/lib/scrapers-db'
+import { TtlCache } from './ttl-cache'
 import { uuidv5 } from '@/lib/uuid5'
 import type { ScraperApiAdapter, PolygonBounds } from './scraper-adapter'
 import { ApiUnexpectedResponseError } from './scraper-adapter'
@@ -135,9 +136,24 @@ export class LyftScraperApiAdapter implements ScraperApiAdapter {
   appId = 'lyft'
   readonly interPolygonDelayMs = 500
   private account: LyftAccount | null = null
+  // city_code/lat/lon are per-city; cache by city to avoid a per-tile DB lookup
+  // (dockless uses the 'all' strategy → one call per tile without the cache).
+  private cityContextCache = new TtlCache<LyftCityContextRow | null>()
+
+  private getCityContext(polygon: PolygonBounds): Promise<LyftCityContextRow | null> {
+    const cacheKey = polygon.city ?? polygon.polygonId
+    return this.cityContextCache.getOrLoad(cacheKey, () => getLyftCityContext(polygon.polygonId))
+  }
 
   polygonStrategy(entityType: EntityType): 'all' | 'center_only' {
     return entityType === 'dockless' ? 'all' : 'center_only'
+  }
+
+  collectionNote(entityType: EntityType): string | null {
+    if (entityType === 'pricings') {
+      return `Pricings gathered from up to ${MAX_PRICING_STATIONS} stations per polygon (MAX_PRICING_STATIONS cap) — coverage may be partial`
+    }
+    return null
   }
 
   async fetchEntities(polygon: PolygonBounds, entityType: EntityType): Promise<ScraperEntity[]> {
@@ -164,7 +180,7 @@ export class LyftScraperApiAdapter implements ScraperApiAdapter {
     const lng      = pt.center_lng as number
     const radiusKm = typeof pt.radius_m === 'number' ? pt.radius_m / 1000 : 1
 
-    const cityCtx = await getLyftCityContext(polygon.polygonId)
+    const cityCtx = await this.getCityContext(polygon)
     if (!cityCtx?.city_code) throw new Error(`No city_code found for Lyft polygon ${polygon.polygonId}`)
 
     const data = await this.post(
@@ -217,7 +233,7 @@ export class LyftScraperApiAdapter implements ScraperApiAdapter {
   }
 
   private async fetchDocked(polygon: PolygonBounds, account: LyftAccount): Promise<ScraperEntity[]> {
-    const cityCtx = await getLyftCityContext(polygon.polygonId)
+    const cityCtx = await this.getCityContext(polygon)
     if (!cityCtx?.city_code || cityCtx.city_lat == null || cityCtx.city_lon == null) {
       throw new Error(`Missing city context for Lyft docked polygon ${polygon.polygonId}`)
     }
@@ -240,7 +256,7 @@ export class LyftScraperApiAdapter implements ScraperApiAdapter {
   }
 
   private async fetchPricings(polygon: PolygonBounds, account: LyftAccount): Promise<ScraperEntity[]> {
-    const cityCtx = await getLyftCityContext(polygon.polygonId)
+    const cityCtx = await this.getCityContext(polygon)
     if (!cityCtx?.city_code || cityCtx.city_lat == null || cityCtx.city_lon == null) {
       throw new Error(`Missing city context for Lyft pricings polygon ${polygon.polygonId}`)
     }

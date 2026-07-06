@@ -20,6 +20,18 @@ export interface ScraperApiAdapter {
   polygonStrategy?(entityType: EntityType): 'all' | 'center_only'
   /** Delay in ms between polygon requests (base; jitter applied externally). Default: 500. */
   interPolygonDelayMs?: number
+  /** Max polygons processed concurrently. Default 1 (sequential).
+   *  The inter-polygon delay is preserved per-worker, so global RPS ≈ workers / delay. */
+  maxConcurrentPolygons?: number
+  /** Called by runApiDbCheck before the polygon loop of one entity type.
+   *  Adapters may use it to reset per-run caches (e.g. cross-tile detail cache). */
+  beginRun?(entityType: EntityType): void
+  /** Called by runApiDbCheck after the polygon loop of one entity type. */
+  endRun?(entityType: EntityType): void
+  /** Human-readable note on collection limits for this entity type, e.g. an
+   *  adapter that caps how many stations it queries so coverage is partial.
+   *  Returned verbatim into EntityCheckSummary.coverageNote (null = no caveat). */
+  collectionNote?(entityType: EntityType): string | null
 }
 
 /** Thrown by an adapter when the API returns a structurally unexpected response

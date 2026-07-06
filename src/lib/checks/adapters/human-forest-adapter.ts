@@ -1,4 +1,5 @@
-import { getHumanForestAccount, getHumanForestZoneContext } from '@/lib/scrapers-db'
+import { getHumanForestAccount, getHumanForestZoneContext, type HumanForestZoneContextRow } from '@/lib/scrapers-db'
+import { TtlCache } from './ttl-cache'
 import { uuidv5 } from '@/lib/uuid5'
 import { HF_UNLOCK_DESCRIPTION } from '@/lib/field-mappings'
 import type { ScraperApiAdapter, PolygonBounds } from './scraper-adapter'
@@ -47,6 +48,8 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
   appId = 'human_forest'
   readonly interPolygonDelayMs = 1000
   private account: HumanForestAccount | null = null
+  // location_id/types are per-city; cache by city for consistency with other adapters.
+  private zoneContextCache = new TtlCache<HumanForestZoneContextRow | null>()
 
   polygonStrategy(entityType: EntityType): 'all' | 'center_only' {
     return entityType === 'dockless' ? 'all' : 'center_only'
@@ -245,7 +248,8 @@ export class HumanForestScraperApiAdapter implements ScraperApiAdapter {
   }
 
   private async fetchZones(polygon: PolygonBounds, account: HumanForestAccount): Promise<ScraperEntity[]> {
-    const ctx = await getHumanForestZoneContext(polygon.polygonId)
+    const cacheKey = polygon.city ?? polygon.polygonId
+    const ctx = await this.zoneContextCache.getOrLoad(cacheKey, () => getHumanForestZoneContext(polygon.polygonId))
     if (!ctx) {
       throw new Error(`No Human Forest zone context found for polygon ${polygon.polygonId}`)
     }

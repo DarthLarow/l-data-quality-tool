@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash } from 'crypto'
 import { getRydeAccount, getRydeCityContext, type RydeCityContextRow } from '@/lib/scrapers-db'
+import { TtlCache } from './ttl-cache'
 import { uuidv5 } from '@/lib/uuid5'
 import type { ScraperApiAdapter, PolygonBounds } from './scraper-adapter'
 import { ApiUnexpectedResponseError } from './scraper-adapter'
@@ -103,7 +104,28 @@ interface VehicleRef {
 export class RydeScraperApiAdapter implements ScraperApiAdapter {
   appId = 'ryde'
   readonly interPolygonDelayMs = 500
+  // 8 workers × 625ms/worker ≈ 13 req/s — below the scraper's own Scrapy profile.
+  // Lower this single number if suspectedBlock warnings appear.
+  readonly maxConcurrentPolygons = 8
   private accessToken: string | null = null
+  // All tiles of one city share the same context; cache by city to avoid a
+  // per-polygon DB lookup on every tile.
+  private cityContextCache = new TtlCache<RydeCityContextRow | null>()
+  // Ryde tiles overlap (~30%), so the same IMEI is enriched in several tiles.
+  // Cache enriched entities by IMEI across one dockless run to skip duplicate
+  // detail requests. Reset per run via beginRun.
+  private detailCache = new Map<string, ScraperEntity>()
+
+  beginRun(entityType: EntityType): void {
+    if (entityType === 'dockless') this.detailCache.clear()
+  }
+
+  collectionNote(entityType: EntityType): string | null {
+    if (entityType === 'dockless') {
+      return `Vehicles beyond the first ${MAX_VEHICLE_DETAILS} per tile carry list-only snapshots (field compare skipped)`
+    }
+    return null
+  }
 
   polygonStrategy(entityType: EntityType): 'all' | 'center_only' {
     // Dockless is tile-based: one ~1×1 km polygon per tile, iotLa/iotLo = tile center.
@@ -114,7 +136,8 @@ export class RydeScraperApiAdapter implements ScraperApiAdapter {
     if (entityType === 'docked') return []
 
     await this.getToken()
-    const ctx = await getRydeCityContext(polygon.polygonId)
+    const cacheKey = polygon.city ?? polygon.polygonId
+    const ctx = await this.cityContextCache.getOrLoad(cacheKey, () => getRydeCityContext(polygon.polygonId))
     if (!ctx || ctx.city_id == null) {
       throw new Error(`No cityId found for Ryde polygon ${polygon.polygonId}`)
     }
@@ -166,14 +189,20 @@ export class RydeScraperApiAdapter implements ScraperApiAdapter {
     const zoneName = polygon.city ?? null
     const results: ScraperEntity[] = []
     const seen = new Set<string>()
+    // Cap counts only fresh detail requests; cross-tile cache hits are free
+    // (no HTTP, no delay) and still count toward per-polygon completeness.
+    let freshDetailCount = 0
 
-    for (let i = 0; i < refs.length; i++) {
-      const ref = refs[i]
+    for (const ref of refs) {
       if (!ref) continue
       let entity: ScraperEntity
 
-      if (i < MAX_VEHICLE_DETAILS) {
-        if (i > 0) await sleep(DETAIL_DELAY_MS)
+      const cached = this.detailCache.get(ref.imei)
+      if (cached) {
+        entity = cached
+      } else if (freshDetailCount < MAX_VEHICLE_DETAILS) {
+        if (freshDetailCount > 0) await sleep(DETAIL_DELAY_MS)
+        freshDetailCount++
         const detail = await this.post(DETAIL_URL, {
           cityId:     String(ctx.city_id),
           deviceIMEI: ref.imei,
@@ -202,6 +231,7 @@ export class RydeScraperApiAdapter implements ScraperApiAdapter {
           category:      ref.vehicleType,
           helmet_status: null,
         }
+        this.detailCache.set(ref.imei, entity)
       } else {
         // Beyond the detail cap: list-only entity (still counts for completeness).
         entity = {

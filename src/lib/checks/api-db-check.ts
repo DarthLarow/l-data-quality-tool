@@ -24,14 +24,11 @@ export async function runApiDbCheck(
     ? (centerPolygons.length > 0 ? centerPolygons.slice(0, 1) : allPolygons.slice(0, 1))
     : allPolygons
 
-  for (const [i, bounds] of polygons.entries()) {
-
-    // Inter-polygon delay (skip for first polygon)
-    if (i > 0) {
-      const baseDelay = adapter.interPolygonDelayMs ?? 500
-      await sleep(baseDelay + Math.random() * baseDelay * 0.5)
-    }
-
+  // Process one polygon: fetch (with one retry), match against DB, record result.
+  // Shared structures are mutated only in synchronous sections (no await between
+  // read and write), so they are safe under the single-threaded event loop even
+  // when multiple workers run concurrently.
+  const processPolygon = async (bounds: PolygonBounds): Promise<void> => {
     // Fetch with one retry on ApiUnexpectedResponseError
     let entities: ScraperEntity[] = []
     let polygonFailed = false
@@ -66,7 +63,7 @@ export async function runApiDbCheck(
         failedPolygons: [bounds.polygonId],
         suspectedBlock: true,
       })
-      continue
+      return
     }
 
     // Normal path
@@ -90,6 +87,32 @@ export async function runApiDbCheck(
       failedPolygons: [],
       suspectedBlock: false,
     })
+  }
+
+  // Worker pool: `workers` polygons in flight at once (default 1 = sequential).
+  // Each worker keeps the inter-polygon delay between its own requests, so the
+  // global request rate scales with worker count but the per-worker pacing (and
+  // the scraper-friendly jitter) is unchanged. Result order becomes
+  // non-deterministic — aggregates and PolygonCheck rows don't depend on it.
+  const workers   = Math.max(1, adapter.maxConcurrentPolygons ?? 1)
+  const baseDelay = adapter.interPolygonDelayMs ?? 500
+  let next = 0
+
+  adapter.beginRun?.(entityType)
+  try {
+    await Promise.all(
+      Array.from({ length: workers }, async () => {
+        while (true) {
+          const i = next++
+          if (i >= polygons.length) break
+          // First `workers` polygons start immediately; the rest are paced.
+          if (i >= workers) await sleep(baseDelay + Math.random() * baseDelay * 0.5)
+          await processPolygon(polygons[i]!)
+        }
+      }),
+    )
+  } finally {
+    adapter.endRun?.(entityType)
   }
 
   const uniqueIds = Array.from(allApiIds)
