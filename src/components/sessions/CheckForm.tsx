@@ -58,12 +58,12 @@ function PillToggle({ active, onClick, children, disabled }: {
   )
 }
 
-function MonoInput({ value, onChange, placeholder, required }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean
+function MonoInput({ value, onChange, placeholder, required, disabled }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean; disabled?: boolean
 }) {
   return (
     <div className="flex items-stretch overflow-hidden rounded-[7px]"
-      style={{ border: '1px solid var(--dq-border-3)', maxWidth: '240px' }}>
+      style={{ border: '1px solid var(--dq-border-3)', maxWidth: '240px', opacity: disabled ? 0.5 : 1 }}>
       <span className="flex items-center px-[10px] font-mono text-[13px]"
         style={{
           color:       'var(--dq-text-8)',
@@ -80,8 +80,9 @@ function MonoInput({ value, onChange, placeholder, required }: {
         onChange={(e) => { if (/^\d*$/.test(e.target.value)) onChange(e.target.value) }}
         placeholder={placeholder ?? 'e.g. 1234'}
         required={required}
+        disabled={disabled}
         className="flex-1 bg-transparent px-[10px] py-[8px] font-mono text-[13px] outline-none"
-        style={{ color: 'var(--dq-text-1)' }}
+        style={{ color: 'var(--dq-text-1)', cursor: disabled ? 'not-allowed' : 'text' }}
       />
     </div>
   )
@@ -106,17 +107,69 @@ export function CheckForm() {
   const [polygonCity,               setPolygonCity]     = useState('')
   const [selectedEntityTypes,       setEntityTypes]     = useState<EntityType[]>([])
   const [checksEnabled,             setChecksEnabled]   = useState<CheckType[]>(['api_db', 'delta'])
+  const [prefilledFrom,             setPrefilledFrom]   = useState<'auto-check' | null>(null)
   const selectedScraper = scrapers.find((s) => s.appId === appId)
+
+  // Progressive form: fields stay locked until a scraper is chosen. Picking one
+  // prefills from its saved AutoCheckConfig (if any), otherwise reveals defaults.
+  const locked = !appId
 
   useEffect(() => {
     fetch('/api/scrapers').then((r) => r.json()).then(setScrapers).catch(console.error)
   }, [])
 
+  // If the scraper arrived via ?scraper= (deep link), run the prefill once
+  // the scraper list is loaded so behaviour matches a manual pick.
+  useEffect(() => {
+    if (appId && prefilledFrom === null && scrapers.some((s) => s.appId === appId)) {
+      void applyScraperPrefill(appId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrapers])
+
+  async function applyScraperPrefill(newAppId: string) {
+    try {
+      const cfg = await fetch(`/api/config/auto-check?appId=${encodeURIComponent(newAppId)}`)
+        .then((r) => (r.ok ? r.json() : null))
+      if (cfg) {
+        setEnvironment(cfg.environment as Environment)
+        setEntityTypes(cfg.entityTypes as EntityType[])
+        setChecksEnabled(cfg.checksEnabled as CheckType[])
+        setPolygonStrategy(cfg.polygonStrategy as PolygonStrategy)
+        if (cfg.polygonCity) setPolygonCity(cfg.polygonCity as string)
+        setPrefilledFrom('auto-check')
+      } else {
+        setPrefilledFrom(null)
+      }
+    } catch {
+      setPrefilledFrom(null)
+    }
+  }
+
+  function onScraperChange(newAppId: string) {
+    setAppId(newAppId)
+    setEntityTypes([])
+    setPrefilledFrom(null)
+    if (newAppId) void applyScraperPrefill(newAppId)
+  }
+
+  function resetToDefaults() {
+    setEnvironment('staging')
+    setEntityTypes([])
+    setChecksEnabled(['api_db', 'delta'])
+    setPolygonStrategy('random')
+    setPolygonId('')
+    setPolygonCity('')
+    setPrefilledFrom(null)
+  }
+
   function toggleEntityType(et: EntityType) {
+    if (locked) return
     setEntityTypes((prev) => prev.includes(et) ? prev.filter((x) => x !== et) : [...prev, et])
   }
 
   function toggleCheckType(ct: CheckType) {
+    if (locked) return
     setChecksEnabled((prev) => prev.includes(ct) ? prev.filter((x) => x !== ct) : [...prev, ct])
   }
 
@@ -163,31 +216,6 @@ export function CheckForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col" style={{ gap: '20px', maxWidth: '560px' }}>
 
-      {/* ── Environment ─────────────────────────────────────────── */}
-      <div>
-        <FieldLabel>Environment</FieldLabel>
-        <div className="flex w-fit overflow-hidden rounded-[7px]"
-          style={{ border: '1px solid var(--dq-border-3)' }}>
-          {(['staging', 'production'] as Environment[]).map((env, i) => (
-            <button
-              key={env}
-              type="button"
-              onClick={() => setEnvironment(env)}
-              className="px-[16px] py-[8px] text-[13px] capitalize transition-colors"
-              style={{
-                background: environment === env ? 'var(--dq-border-2)' : 'transparent',
-                color:      environment === env ? 'var(--dq-text-1)' : 'var(--dq-text-5)',
-                fontWeight: environment === env ? 500 : 400,
-                borderLeft: i > 0 ? '1px solid var(--dq-border-2)' : 'none',
-                cursor:     'pointer',
-              }}
-            >
-              {env}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* ── Scraper ─────────────────────────────────────────────── */}
       <div>
         <FieldLabel>Scraper</FieldLabel>
@@ -204,7 +232,7 @@ export function CheckForm() {
           </div>
           <select
             value={appId}
-            onChange={(e) => { setAppId(e.target.value); setEntityTypes([]) }}
+            onChange={(e) => onScraperChange(e.target.value)}
             className="absolute inset-0 w-full cursor-pointer opacity-0"
             required
           >
@@ -214,16 +242,64 @@ export function CheckForm() {
             ))}
           </select>
         </div>
+
+        {locked && (
+          <p className="mt-[8px] text-[11.5px]" style={{ color: 'var(--dq-text-7)' }}>
+            Select a scraper to unlock the rest of the form.
+          </p>
+        )}
+        {prefilledFrom === 'auto-check' && (
+          <div className="mt-[8px] flex items-center gap-[10px]">
+            <span className="rounded-[5px] px-[8px] py-[3px] font-mono text-[11px]"
+              style={{ background: 'var(--dq-border-1)', color: 'var(--dq-text-4)' }}>
+              Prefilled from auto-check config
+            </span>
+            <button
+              type="button"
+              onClick={resetToDefaults}
+              className="text-[11.5px] underline"
+              style={{ color: 'var(--dq-text-6)', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              Reset to defaults
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Environment ─────────────────────────────────────────── */}
+      <div style={{ opacity: locked ? 0.5 : 1 }}>
+        <FieldLabel>Environment</FieldLabel>
+        <div className="flex w-fit overflow-hidden rounded-[7px]"
+          style={{ border: '1px solid var(--dq-border-3)' }}>
+          {(['staging', 'production'] as Environment[]).map((env, i) => (
+            <button
+              key={env}
+              type="button"
+              disabled={locked}
+              onClick={() => setEnvironment(env)}
+              className="px-[16px] py-[8px] text-[13px] capitalize transition-colors"
+              style={{
+                background: environment === env ? 'var(--dq-border-2)' : 'transparent',
+                color:      environment === env ? 'var(--dq-text-1)' : 'var(--dq-text-5)',
+                fontWeight: environment === env ? 500 : 400,
+                borderLeft: i > 0 ? '1px solid var(--dq-border-2)' : 'none',
+                cursor:     locked ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {env}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Session ID ──────────────────────────────────────────── */}
-      <div>
+      <div style={{ opacity: locked ? 0.5 : 1 }}>
         <FieldLabel>Scrapers Session ID</FieldLabel>
-        <MonoInput value={scrapersSessionId} onChange={setSessionId} required />
+        <MonoInput value={scrapersSessionId} onChange={setSessionId} required disabled={locked} />
       </div>
 
       {/* ── Check types ─────────────────────────────────────────── */}
-      <div>
+      <div style={{ opacity: locked ? 0.5 : 1 }}>
         <FieldLabel>Check Types</FieldLabel>
         <div className="flex flex-col gap-[6px]">
           {CHECK_DEFS.map(({ ct, title, desc }) => {
@@ -232,10 +308,11 @@ export function CheckForm() {
               <div
                 key={ct}
                 onClick={() => toggleCheckType(ct)}
-                className="flex cursor-pointer items-center gap-[12px] rounded-[8px] px-[14px] py-[11px] transition-all"
+                className="flex items-center gap-[12px] rounded-[8px] px-[14px] py-[11px] transition-all"
                 style={{
                   border:     active ? '1px solid var(--dq-border-4)' : '1px solid var(--dq-border-2)',
                   background: active ? 'var(--dq-border-1)' : 'transparent',
+                  cursor:     locked ? 'not-allowed' : 'pointer',
                 }}
               >
                 {/* Custom checkbox */}
@@ -267,13 +344,14 @@ export function CheckForm() {
       </div>
 
       {/* ── Polygon strategy ────────────────────────────────────── */}
-      <div>
+      <div style={{ opacity: locked ? 0.5 : 1 }}>
         <FieldLabel>Polygon</FieldLabel>
         <div className="flex flex-wrap gap-[6px]">
           {POLYGON_OPTIONS.map((opt) => (
             <PillToggle
               key={opt.value}
               active={polygonStrategy === opt.value}
+              disabled={locked}
               onClick={() => setPolygonStrategy(opt.value)}
             >
               {opt.label}
@@ -289,6 +367,7 @@ export function CheckForm() {
               value={polygonId}
               onChange={(e) => setPolygonId(e.target.value)}
               placeholder="Polygon ID"
+              disabled={locked}
               className="flex-1 bg-transparent px-[12px] py-[8px] font-mono text-[13px] outline-none"
               style={{ color: 'var(--dq-text-1)' }}
             />
@@ -303,6 +382,7 @@ export function CheckForm() {
                   <PillToggle
                     key={city}
                     active={polygonCity === city}
+                    disabled={locked}
                     onClick={() => setPolygonCity(city)}
                   >
                     {city}
@@ -317,6 +397,7 @@ export function CheckForm() {
                   value={polygonCity}
                   onChange={(e) => setPolygonCity(e.target.value)}
                   placeholder="City name"
+                  disabled={locked}
                   className="flex-1 bg-transparent px-[12px] py-[8px] text-[13px] outline-none"
                   style={{ color: 'var(--dq-text-1)' }}
                 />
@@ -327,13 +408,14 @@ export function CheckForm() {
       </div>
 
       {/* ── Entity types ────────────────────────────────────────── */}
-      <div>
+      <div style={{ opacity: locked ? 0.5 : 1 }}>
         <FieldLabel>Entity Types</FieldLabel>
         <div className="flex gap-[6px]">
           {ENTITY_TYPES.map((et) => (
             <PillToggle
               key={et}
               active={selectedEntityTypes.includes(et)}
+              disabled={locked}
               onClick={() => toggleEntityType(et)}
             >
               {et}
@@ -344,7 +426,7 @@ export function CheckForm() {
 
       {/* ── Previous Session ID ─────────────────────────────────── */}
       {checksEnabled.includes('delta') && (
-        <div>
+        <div style={{ opacity: locked ? 0.5 : 1 }}>
           <FieldLabel>
             Previous Session ID{' '}
             <span style={{ color: 'var(--dq-text-7)', fontWeight: 400 }}>for Delta</span>
@@ -353,6 +435,7 @@ export function CheckForm() {
             value={previousScrapersSessionId}
             onChange={setPrevSessionId}
             placeholder="e.g. 1233"
+            disabled={locked}
           />
         </div>
       )}

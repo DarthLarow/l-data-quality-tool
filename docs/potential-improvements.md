@@ -172,7 +172,13 @@ BullMQ+Redis розглянуто і відхилено: тягне Redis у doc
 
 ---
 
-## 2. Прогресивна форма створення сесії
+## 2. Прогресивна форма створення сесії ✅ РЕАЛІЗОВАНО (2026-07-06)
+
+> **Статус:** реалізовано в `CheckForm.tsx` + `GET /api/config/auto-check?appId=`.
+> Поля стартують `locked` (крім селекта скрапера), вибір скрапера робить prefill
+> з `AutoCheckConfig` і показує бейдж «Prefilled from auto-check config» + кнопку
+> «Reset to defaults». Deep-link `?scraper=` теж тригерить prefill. Backend:
+> `GET /api/config/auto-check` отримав фільтр `?appId=` (повертає один конфіг або null).
 
 **Ідея:** на `/sessions/new` всі поля спочатку задізейблені. Користувач обирає
 **скрапер** → поля розблоковуються і **автозаповнюються з `AutoCheckConfig`**
@@ -306,7 +312,16 @@ interface SessionDefect {
 
 ---
 
-## 4. Стійкість з'єднання зі scrapers_db (port-forward)
+## 4. Стійкість з'єднання зі scrapers_db (port-forward) ✅ РЕАЛІЗОВАНО (2026-07-06)
+
+> **Статус:** обидві частини зроблено. **А:** `scrapers-db-stage.sh` /
+> `scrapers-db-prod.sh` тепер супервізор-цикл (`while true` + `sleep 2` +
+> `trap INT`) — форвард піднімається сам за ~2с. **Б:** `scrapersQuery` отримав
+> ретраї (4 спроби, бекоф 5/10/15с) на connection-помилки (`ECONNREFUSED`,
+> `ECONNRESET`, `ETIMEDOUT`, `57P01`, `08006`, `08003`, `08001` + текстові
+> патерни); між спробами `resetPool()` скидає пул із мертвими клієнтами;
+> `pool.on('error')` глушить краш процесу від мертвого idle-клієнта. SQL/логічні
+> помилки не ретраяться. 3 юніт-тести в `scrapers-query-retry.test.ts`.
 
 **Проблема:** `kubectl port-forward` періодично відвалюється (idle-таймаути,
 зміна мережі, рестарт API-сервера) і **сам не перепідключається**. `scrapersQuery`
